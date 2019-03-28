@@ -1,0 +1,55 @@
+The Game  
+
+----------------------------
+INI file
+SizeCell: 15 Default, my screen uses 20. Works for my resolution which is 1680x1050. 
+
+To change SizeCell, open game, quit.  Edit TheGame.ini.
+
+-------------------------------------------------------------
+Game used a 200ms timing loop.  My Win 7 uses 40-50 ms per loop. My Win 10 about 150-220ms
+
+Game Loop
+You move (up left/right), objects move, you move down.  Tick time delay to 200ms, repeat. 
+
+--------------------------------------------------------
+Start Menu: 
+
+1. Start Game
+2. Demo Level  <<-- Should run first.  Explains things.
+3. Instructions  Notepad this text.  You have to close. 
+E. Edit current level - I was updating it and broke it, redoing it.
+
+Q. Quit
+
+----------------------------------------------------------------------------------------
+Game: Pick up all the Diamonds to go to next Level
+C = Cancel Game back to start Menu  (sometime take a while, don't know why yet)
+ESC = Will kill you if you get stuck. Some level have rooms you can't leave.   (sometime take a while, don't know why yet)
+
+
+Diamond:  You must pick up all to go to next level. Jump on and press down.
+
+YOU:  Happy face is you.  You only move left or right. By the way you move you will go up. Nothing under you, you will drop (fast).
+
+
+Lift:  light blue block: You can ride it up only, but get off somewhere on the way up or splat. 
+	Best: Start getting off one cell early. Timing.
+	Lift will return to start after you get off.
+
+Vertical moving blocks:  You can ride them down but not up. Don't run into them, it deadly.
+
+Horizonal moving blocks + - :  Deadly if you run to them or them into you.  
+                                You can jump on top and when they move a way you will drop.
+
+Hidden area. You need the torch to see. There are moving hidden horizonal blocks.
+
+~~ you can ride down. They DON'T go back up.
+
+Missile: You seeking. Star:  Turn off with the switch. Get on top of switch press down.  Green or Red star.
+
+Key, Torch which you should pickup. (Get on top press down)
+
+Hidden pieces (need torch) and a Door (need key).
+
+
