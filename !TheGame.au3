@@ -6,29 +6,32 @@
 #EndRegion ;**** Directives created by AutoIt3Wrapper_GUI ****
 AutoItSetOption("MustDeclareVars", 1)
 
-Global $g_ver = "0.73a 21 Mar 19 Add game title game screen"
+Global $g_ver = "0.76c 28 Mar 19 Edit title"
 
 #include <Debug.au3>
 ;_DebugSetup("The Game", True) ; start
 
 ;_DebugOut($g_ver)
 Global $_debug = @error = 0
-Global $TESTING = False
+Global $TESTING = True
 
 #cs ----------------------------------------------------------------------------
-Based on:
-	The Game with no name  Designed and programmed by Darren Heaton 1990
+	to do int
 
-
-to do int
-
-	Level heading and date codes
 	lift instant up not wait to next tick
-	Edit Load 10 Test 10 but says 7
+	see instruction.txt
 
+	0.77   Mar 19 Load / Quit / Demo if level changed warning.
+
+	0.76c 28 Mar 19 Edit title
+	0.76b 28 Mar 19 Delay in C or Esc cause by mouses in Msg, added a fix
+	0.76a 28 Mar 19 Fix KEY it the bonus over paints it.
+	0.76 27 Mar 19 Make Demo work again
+	0.75 26 Mar 19 Add Game Title and date
+	0.74 26 Mar 19 Edit layout better
 	0.73 21 Mar 19 Add game title game screen
 	0.72 17 Mar 19 Change High Score
-	0.71 17 Mar 19 Fix Edit keys (i broke them again)
+	0.71 17 Mar 19 Fix Edit keys
 	0.70 14 Mar 19 Revert to the way I did Start Menu
 	0.69 11 Mar 19 Fix hot key in game.
 	0.68 10 Mar 19 Fix Torch Edit
@@ -175,6 +178,8 @@ Global $g_ExitGameScreen = False
 
 ;Game
 Global $g_GameTitle = ""
+Global $g_GameDate = ""
+Global $g_GameChanged = True
 Global $g_iBonus = 0
 Global $hDLL = DllOpen("user32.dll")
 
@@ -201,6 +206,7 @@ EndIf
 Global $s_iHalfway = (($g_Size * $s_iBoxX) + $s_iTextBorder) / 2 ;used for game lines so left side in not overwriten
 Global $s_iLineX = $g_Size * $s_iBoxX
 Global $s_iLineTop = $g_Size * $s_iBoxY + $s_iBorder * 2 + 10 + $g_Top
+
 Global $g_iEditLine = $g_Size * $s_iBoxY + $s_iBorder * 2 ; + (LINE# * $s_iLineSpace)
 
 ;Line Games Edit?
@@ -264,6 +270,7 @@ Global $g_aHiScore[10][3] ; data load by INI.  10 = 8 date, 1 cnt, 1 update
 Global $g_ScoreStr1 = False
 
 ;Edit Screen
+Global $g_EdTitle
 Global $g_iEditLines = 10
 Global $g_aEditMap[$s_iBoxX][$s_iBoxY]
 Global $g_iEditX = 0
@@ -289,7 +296,6 @@ Global $g_ScreenEdit = 0
 Global $g_fEditMode = False
 Global $g_hDLL = 0
 Global $g_iPick = $EMPTY
-Global $g_iStatusEdit = 0
 Global $g_fHiddenActive = False
 Global $g_aHidden[50][4] ;0 = 0,1 used : 1 New 1=Hide, 2=Show, 2 X : 3 Y
 Global $g_iHiddenCnt = 0
@@ -309,11 +315,11 @@ Global $g_fDemoLevel = False
 
 ;Call Main at bottom
 
-Func Pause()
-	MsgBox(0, "", "")
+Func Pause($a = "")
+	MsgBox(0, "", $a)
 EndFunc   ;==>Pause
 #CS INFO
-	3360 V2 2/24/2019 6:05:52 PM V1 2/24/2019 10:03:19 AM
+	3687 V3 3/28/2019 9:21:27 PM V2 2/24/2019 6:05:52 PM V1 2/24/2019 10:03:19 AM
 #CE
 
 ;----------------------------------- End of Global
@@ -322,6 +328,8 @@ Func Main()
 	Local $fOkProgram = True
 
 	ReadIni()
+
+	;EditScreen()
 
 	While $fOkProgram
 		If $g_fEditDemo Then
@@ -338,13 +346,12 @@ Func Main()
 				DoDemoLevel()
 
 			Case 3
-				Instructions() ;need to be better
+				Instructions()
 
 			Case 4
 				MsgBox($MB_TOPMOST, "", "Function " & $i & " not active")
 
 			Case 5
-				MsgBox($MB_TOPMOST, "", "Function " & $i & " Broken")
 				EditScreen()
 				If $g_fEditDemo Then
 					GameScreen()
@@ -359,7 +366,7 @@ Func Main()
 	EndIf
 EndFunc   ;==>Main
 #CS INFO
-	32475 V2 2/24/2019 6:05:52 PM V1 2/24/2019 10:03:19 AM
+	33613 V4 3/28/2019 9:21:27 PM V3 3/25/2019 12:04:08 AM V2 2/24/2019 6:05:52 PM V1 2/24/2019 10:03:19 AM
 #CE
 
 ;INI Section Score  ScoreWho
@@ -474,15 +481,490 @@ EndFunc   ;==>Instructions
 
 #ce
 
-;~~~~~~~~~~~~
+Global $g_EdQuit
+Global $Which0[25][2]
+Global $Which1[25][2]
+Global $Which2[25][2]
+Global $g_Under, $g_Selected
+
+;~~~~~~
 Func EditScreen()
 	;Edit Screen Button
-	exit
-EndFunc
+	Local $iColumn, $fFac, $iColumnHalf, $iHalf, $iW, $string, $flag
+	Local $mousePos, $tPoint, $x, $y, $z, $nMsg, $sLetters
 
+	Local Static $Title, $Which[3], $b[25]
+	Local Static $ls_idDown, $ls_idRight, $ls_idLeft, $ls_idUp, $ls_idSpace, $ls_bQuit
+	Local Static $ls_bClear, $ls_bDemo, $ls_bKeyInput, $ls_bLoad, $ls_bRepeat, $ls_bSave
+
+	If $g_fEditDemo = False Then
+		$g_FileName = ""
+	EndIf
+
+	; $EditLint + (LINE# * $s_iLineSpace)
+	$g_iPick = $EMPTY
+	$g_fEdRepeat = False
+	$g_cEdStKp = ""
+
+	$g_fHitKey = False
+	$g_fHitTorch = False
+
+	If $g_hDLL = 0 Then
+		$g_hDLL = DllOpen("user32.dll")
+	EndIf
+
+	$g_iYouX = 0
+	$g_iYouY = 0
+
+	If $g_ScreenEdit = 0 Then
+		$g_ScreenEdit = GUICreate("The Game - Edit screen - " & $g_ver, $s_iLineX, $g_iEditLine + 320, -1, -1)
+		GUISetState(@SW_SHOW, $g_ScreenEdit)
+
+		For $y = 0 To $s_iBoxY - 1
+			For $x = 0 To $s_iBoxX - 1
+				$g_aMap[$x][$y] = -1
+				$g_aEditMap[$x][$y] = GUICtrlCreatePic(@ScriptDir & "\Pic\Edge.jpg", $x * $g_Size + $s_iBorder, $y * $g_Size + $s_iBorder, $g_Size, $g_Size)
+			Next
+		Next
+
+		$ls_idDown = GUICtrlCreateDummy()
+		$ls_idRight = GUICtrlCreateDummy()
+		$ls_idLeft = GUICtrlCreateDummy()
+		$ls_idUp = GUICtrlCreateDummy()
+		$ls_idSpace = GUICtrlCreateDummy()
+
+		$iColumn = Int($s_iLineX / 10)
+		$fFac = $iColumn / 123
+
+		$iColumnHalf = Int($iColumn / 2)
+		$iHalf = Int($s_iLineX / 2)
+		$iW = Int($fFac * 100)
+;~~
+		$g_EdTitle = GUICtrlCreateLabel("Title - Date", $s_iBorder, $g_iEditLine, $s_iLineX, 20, $SS_CENTER)
+		GUICtrlSetFont(-1, 12, 400, 0, "MS Sans Serif")
+
+		$g_Under = GUICtrlCreateLabel("What under cursor", $iHalf - $iColumn, $g_iEditLine + 20, $iColumn * 2, 20, $SS_CENTER)
+		GUICtrlSetFont(-1, 12, 800, 0, "Arial Black")
+
+		$g_Selected = GUICtrlCreateLabel("Selected Object", $iHalf - $iColumn, $g_iEditLine + 40, $iColumn * 2, 20, $SS_CENTER)
+		GUICtrlSetFont(-1, 12, 800, 0, "Arial Black")
+		GUICtrlSetBkColor(-1, $COLOR_SKYBLUE)
+
+		$ls_bRepeat = GUICtrlCreateButton("Repeat", $iHalf - $iColumn * 2, $g_iEditLine + 30, $iW, 30)
+		$ls_bKeyInput = GUICtrlCreateButton("Add Text", $iHalf - $iColumn * 3, $g_iEditLine + 30, $iW, 30)
+		$ls_bQuit = GUICtrlCreateButton("Quit", $iHalf + $iColumn * 4, $g_iEditLine + 30, $iW, 30)
+
+		$Which[0] = GUICtrlCreateButton("Colors", $iHalf - $iColumn * 1.5, $g_iEditLine + 70, $iW, 30)
+		$Which[1] = GUICtrlCreateButton("Objects", $iHalf - $iW * .5, $g_iEditLine + 70, $iW, 30)
+		$Which[2] = GUICtrlCreateButton("Controls", (($iColumn * 1.5) - $iW) + $iHalf, $g_iEditLine + 70, $iW, 30)
+
+		;$Which[0] ; Colors
+		;$Which[1] ; Object
+		;$Which[2] ; Controls
+
+		$b[0] = GUICtrlCreateButton("", $iHalf - $iW * 2.5, $g_iEditLine + 110, $iW, 30)
+		$b[1] = GUICtrlCreateButton("", $iHalf - $iW * 1.5, $g_iEditLine + 110, $iW, 30)
+		$b[2] = GUICtrlCreateButton("", $iHalf - $iW * .5, $g_iEditLine + 110, $iW, 30)
+		$b[3] = GUICtrlCreateButton("", $iHalf + $iW * .5, $g_iEditLine + 110, $iW, 30)
+		$b[4] = GUICtrlCreateButton("", $iHalf + $iW * 1.5, $g_iEditLine + 110, $iW, 30)
+
+		$b[5] = GUICtrlCreateButton("", $iHalf - $iW * 2.5, $g_iEditLine + 150, $iW, 30)
+		$b[6] = GUICtrlCreateButton("", $iHalf - $iW * 1.5, $g_iEditLine + 150, $iW, 30)
+		$b[7] = GUICtrlCreateButton("", $iHalf - $iW * .5, $g_iEditLine + 150, $iW, 30)
+		$b[8] = GUICtrlCreateButton("", $iHalf + $iW * .5, $g_iEditLine + 150, $iW, 30)
+		$b[9] = GUICtrlCreateButton("", $iHalf + $iW * 1.5, $g_iEditLine + 150, $iW, 30)
+
+		$b[10] = GUICtrlCreateButton("", $iHalf - $iW * 2.5, $g_iEditLine + 190, $iW, 30)
+		$b[11] = GUICtrlCreateButton("", $iHalf - $iW * 1.5, $g_iEditLine + 190, $iW, 30)
+		$b[12] = GUICtrlCreateButton("", $iHalf - $iW * .5, $g_iEditLine + 190, $iW, 30)
+		$b[13] = GUICtrlCreateButton("", $iHalf + $iW * .5, $g_iEditLine + 190, $iW, 30)
+		$b[14] = GUICtrlCreateButton("", $iHalf + $iW * 1.5, $g_iEditLine + 190, $iW, 30)
+
+		$b[15] = GUICtrlCreateButton("", $iHalf - $iW * 2.5, $g_iEditLine + 230, $iW, 30)
+		$b[16] = GUICtrlCreateButton("", $iHalf - $iW * 1.5, $g_iEditLine + 230, $iW, 30)
+		$b[17] = GUICtrlCreateButton("", $iHalf - $iW * .5, $g_iEditLine + 230, $iW, 30)
+		$b[18] = GUICtrlCreateButton("", $iHalf + $iW * .5, $g_iEditLine + 230, $iW, 30)
+		$b[19] = GUICtrlCreateButton("", $iHalf + $iW * 1.5, $g_iEditLine + 230, $iW, 30)
+
+		$b[20] = GUICtrlCreateButton("", $iHalf - $iW * 2.5, $g_iEditLine + 270, $iW, 30)
+		$b[21] = GUICtrlCreateButton("", $iHalf - $iW * 1.5, $g_iEditLine + 270, $iW, 30)
+		$b[22] = GUICtrlCreateButton("", $iHalf - $iW * .5, $g_iEditLine + 270, $iW, 30)
+		$b[23] = GUICtrlCreateButton("", $iHalf + $iW * .5, $g_iEditLine + 270, $iW, 30)
+		$b[24] = GUICtrlCreateButton("", $iHalf + $iW * 1.5, $g_iEditLine + 270, $iW, 30)
+
+		;Computer Which buttons
+		$string = "0,Empty,0,1, blue,128,5,green,129,2,dark blue,130,3,darkest blue,131,4,light blue,136,6,dark green,132,8,darker red,133,7,red,134,9,earth,135,12, Hidden,17"
+		; all use the same function so string the Color value for the function
+		SetupWhich($Which0, $string)
+
+		$string = "0,Empty,0,2,You,1,4,Diamond,2,5,Water,6,7,Key,3,9,Torch,4,8,Door,5"
+		$string &= ",10,Lift,8,11,Platform Down,9,12,Missile Off,7,13,Missile,31,14,Hidden,17"
+		$string &= ",15,Horz Right,11,16,Horz Left,13,18,Hid Right,12,19,Hid Left,14,17,Vertital,15"
+		SetupWhich($Which1, $string)
+;~~
+		$string = "0,Load,EdLoadLevel, 2,Save,EdSaveLevel,12,Clear,ClearScreen,15,Demo,StrDemo,4,New,Pause,19,Edit Title,EditLevelTitle"
+		SetupWhich($Which2, $string)
+		;_ArrayDisplay($Which0)
+		;_ArrayDisplay($Which1)
+		;_ArrayDisplay($Which2)
+	EndIf
+
+	GUISetState(@SW_SHOW, $g_ScreenEdit)
+
+	$g_fEditMode = True
+
+	$s_iMapSizeX = $s_iBoxX - 2 ;80  Put this block before EdLoadLevel/Clearscreen
+	$s_iMapSizeY = $s_iBoxY - 2 ;20
+	$g_iEditX = $s_iMapSizeX / 2
+	$g_iEditY = $s_iMapSizeY / 2
+	$g_iEdit_Xcur = $g_iEditX
+	$g_iEdit_Ycur = $g_iEditY
+
+	If $g_fEditDemo Then
+		EdLoadLevel()
+		$g_fEditDemo = False
+	Else
+		ClearScreen()
+	EndIf
+
+	$g_iDirection = 0
+
+	EditObject(-2)
+	EditStatus()
+	$g_EdQuit = True
+	$nMsg = 0
+
+	Local $WhichCur
+	$WhichCur = 2
+	GUICtrlSetFont($Which[2], 8.5, $FW_HEAVY)
+	For $z = 0 To 24
+		If $Which2[$z][0] = "" Then
+			GUICtrlSetState($b[$z], $GUI_HIDE)
+		Else
+			GUICtrlSetData($b[$z], $Which2[$z][0])
+			GUICtrlSetState($b[$z], $GUI_SHOW)
+		EndIf
+	Next
+;~~~
+
+	Local $aAccelKey2[][] = [["{RIGHT}", $ls_idRight], ["{LEFT}", $ls_idLeft], [" ", $ls_idSpace], ["{DOWN}", $ls_idDown], ["{UP}", $ls_idUp]]
+	GUISetAccelerators($aAccelKey2, $g_ScreenEdit)
+
+	;Edit Loop
+	While $g_EdQuit ;1
+		$nMsg = GUIGetMsg()
+		If $nMsg > 0 Then
+			$flag = True
+			For $z = 0 To 24
+				If $nMsg = $b[$z] Then
+					$flag = False
+					Switch $WhichCur
+						Case 2
+							Call($Which2[$z][1])
+							If @error = 0xDEAD And @extended = 0xBEEF Then
+								MsgBox($MB_SYSTEMMODAL, "", "Function does not exist. Z = " & $z & " Func: " & $Which2[$z][1])
+								Exit
+							EndIf
+						Case 1
+							$g_iPick = Int($Which1[$z][1])
+						Case 0
+							$g_iPick = Int($Which0[$z][1])
+					EndSwitch
+					ExitLoop
+				EndIf
+			Next
+		EndIf
+
+		If $flag Then
+			Switch $nMsg
+
+				Case $Which[0] ; Colors
+					GUICtrlSetFont($Which[$WhichCur], 8.5, $FW_NORMAL)
+					GUICtrlSetFont($Which[0], 8.5, $FW_HEAVY)
+
+					$WhichCur = 0
+					For $z = 0 To 19
+						If $Which0[$z][0] = "" Then
+							GUICtrlSetState($b[$z], $GUI_HIDE)
+						Else
+							GUICtrlSetData($b[$z], $Which0[$z][0])
+							GUICtrlSetState($b[$z], $GUI_SHOW)
+						EndIf
+					Next
+
+				Case $Which[1] ; Object
+					GUICtrlSetFont($Which[$WhichCur], 8.5, $FW_NORMAL)
+					GUICtrlSetFont($Which[1], 8.5, $FW_HEAVY)
+					$WhichCur = 1
+					For $z = 0 To 19
+						If $Which1[$z][0] = "" Then
+							GUICtrlSetState($b[$z], $GUI_HIDE)
+						Else
+							GUICtrlSetData($b[$z], $Which1[$z][0])
+							GUICtrlSetState($b[$z], $GUI_SHOW + $GUI_ENABLE)
+						EndIf
+					Next
+
+				Case $Which[2] ; Controls
+
+					GUICtrlSetFont($Which[$WhichCur], 8.5, $FW_NORMAL)
+					GUICtrlSetFont($Which[2], 8.5, $FW_HEAVY)
+
+					$WhichCur = 2
+
+					For $z = 0 To 24
+						If $Which2[$z][0] = "" Then
+							GUICtrlSetState($b[$z], $GUI_HIDE)
+						Else
+							GUICtrlSetData($b[$z], $Which2[$z][0])
+							GUICtrlSetState($b[$z], $GUI_SHOW)
+						EndIf
+					Next
+
+				Case $ls_idLeft
+					Do
+					Until GUIGetMsg() <> $ls_idLeft
+					$g_iEditX -= 1
+					If $g_iEditX < 1 Then
+						$g_iEditX = $s_iBoxX - 2
+					EndIf
+					If $g_fEdRepeat Then
+						$g_aMap[$g_iEdit_Xcur][$g_iEdit_Ycur] = $g_iPick
+						$g_GameChanged = True
+					EndIf
+					ShowObject($g_iEdit_Xcur, $g_iEdit_Ycur, -1)
+					ShowObject($g_iEditX, $g_iEditY, -1)
+					$g_iEdit_Xcur = $g_iEditX
+					$g_iEdit_Ycur = $g_iEditY
+					EditStatus()
+
+				Case $ls_idRight
+					;					$g_iDirection = 2
+					Do
+					Until GUIGetMsg() <> $ls_idRight
+					$g_iEditX += 1
+					If $g_iEditX > $s_iBoxX - 2 Then
+						$g_iEditX = 1
+					EndIf
+					If $g_fEdRepeat Then
+						$g_aMap[$g_iEdit_Xcur][$g_iEdit_Ycur] = $g_iPick
+						$g_GameChanged = True
+					EndIf
+					ShowObject($g_iEdit_Xcur, $g_iEdit_Ycur, -1)
+					ShowObject($g_iEditX, $g_iEditY, -1)
+					$g_iEdit_Xcur = $g_iEditX
+					$g_iEdit_Ycur = $g_iEditY
+					EditStatus()
+
+				Case $ls_idUp
+					;					$g_iDirection = 3
+					Do
+					Until GUIGetMsg() <> $ls_idUp
+					$g_iEditY += 1
+					If $g_iEditY > $s_iBoxY - 2 Then
+						$g_iEditY = 1
+					EndIf
+					If $g_fEdRepeat Then
+						$g_aMap[$g_iEdit_Xcur][$g_iEdit_Ycur] = $g_iPick
+						$g_GameChanged = True
+					EndIf
+					ShowObject($g_iEdit_Xcur, $g_iEdit_Ycur, -1)
+					ShowObject($g_iEditX, $g_iEditY, -1)
+					$g_iEdit_Xcur = $g_iEditX
+					$g_iEdit_Ycur = $g_iEditY
+					EditStatus()
+				Case $ls_idDown
+					;					$g_iDirection = 4
+					Do
+					Until GUIGetMsg() <> $ls_idDown
+					$g_iEditY -= 1
+					If $g_iEditY < 1 Then
+						$g_iEditY = $s_iBoxY - 2
+					EndIf
+					If $g_fEdRepeat Then
+						$g_aMap[$g_iEdit_Xcur][$g_iEdit_Ycur] = $g_iPick
+						$g_GameChanged = True
+					EndIf
+					ShowObject($g_iEdit_Xcur, $g_iEdit_Ycur, -1)
+					ShowObject($g_iEditX, $g_iEditY, -1)
+					$g_iEdit_Xcur = $g_iEditX
+					$g_iEdit_Ycur = $g_iEditY
+					EditStatus()
+				Case $ls_idSpace
+					;					$g_iDirection = 5
+					$g_aMap[$g_iEdit_Xcur][$g_iEdit_Ycur] = $g_iPick
+					$g_GameChanged = True
+					ShowObject($g_iEdit_Xcur, $g_iEdit_Ycur, -1)
+					ShowObject($g_iEditX, $g_iEditY, -1)
+					$g_iEdit_Xcur = $g_iEditX
+					$g_iEdit_Ycur = $g_iEditY
+					EditStatus()
+
+				Case $ls_bRepeat
+					If $g_fEdRepeat Then
+						$g_fEdRepeat = False
+						GUICtrlSetBkColor($ls_bRepeat, $COLOR_RED)
+					Else
+						$g_fEdRepeat = True
+						$g_aMap[$g_iEdit_Xcur][$g_iEdit_Ycur] = $g_iPick
+						$g_GameChanged = True
+						GUICtrlSetBkColor($ls_bRepeat, $COLOR_GREEN)
+					EndIf
+
+				Case $ls_bKeyInput
+					;	HotKeySet("{Space}") ;5
+					GUISetAccelerators(1, $g_ScreenEdit)
+					$sLetters = InputBox("Input String", "Display upper case A-Z 0-9 /:-" & @CRLF)
+					$sLetters = StringUpper($sLetters)
+					GUISetAccelerators($aAccelKey2, $g_ScreenEdit)
+					;	HotKeySet("{Space}", "EdSpace") ;5
+
+					If StringLen($sLetters) + $g_iEdit_Xcur > 80 Then ;Too long
+						MsgBox($MB_TOPMOST, "String too long", "String too long!")
+					Else
+						For $z = 1 To StringLen($sLetters)
+							ShowObject($g_iEdit_Xcur + $z - 1, $g_iEdit_Ycur, Asc(StringMid($sLetters, $z, 1)))
+						Next
+					EndIf
+
+				Case $ls_bQuit
+					$g_EdQuit = False
+
+			EndSwitch
+		EndIf ;Flag
+		EditStatus()
+
+		If _IsPressed("02", $g_hDLL) Then ; 02 right button
+			While _IsPressed("02", $g_hDLL)
+				Sleep(200)
+			WEnd
+			$g_aMap[$g_iEdit_Xcur][$g_iEdit_Ycur] = $g_iPick
+			$g_GameChanged = True
+			;				ShowObject($g_iEdit_Xcur, $g_iEdit_Ycur, -1)
+			EditStatus()
+
+		ElseIf _IsPressed("01", $g_hDLL) Then ; 02 right button
+			$mousePos = MouseGetPos()
+			While _IsPressed("01", $g_hDLL)
+				Sleep(200)
+			WEnd
+
+			Local $tPoint = DllStructCreate("int X;int Y")
+			DllStructSetData($tPoint, "X", $mousePos[0])
+			DllStructSetData($tPoint, "Y", $mousePos[1])
+			_WinAPI_ScreenToClient($g_ScreenEdit, $tPoint)
+			$x = (DllStructGetData($tPoint, "X") - ($g_Size + $s_iBorder))
+			$y = (DllStructGetData($tPoint, "Y") - ($g_Size + $s_iBorder))
+			If $x >= 0 And $y >= 0 And $x < 80 * $g_Size And $y < 20 * $g_Size Then
+
+				$g_iEditX = Int($x / $g_Size) + 1
+				$g_iEditY = 20 - Int($y / $g_Size)
+
+				ShowObject($g_iEdit_Xcur, $g_iEdit_Ycur, -1)
+				$g_iEdit_Xcur = $g_iEditX
+				$g_iEdit_Ycur = $g_iEditY
+				EditStatus()
+
+			EndIf
+		EndIf
+
+	WEnd
+
+	GUISetAccelerators($g_ScreenGame, $g_ScreenGame)
+	$g_fEditMode = False
+	GUISetState(@SW_HIDE, $g_ScreenEdit)
+
+EndFunc   ;==>EditScreen
+#CS INFO
+	839372 V14 3/28/2019 9:21:27 PM V13 3/27/2019 9:45:39 PM V12 3/26/2019 8:43:36 PM V11 3/25/2019 9:26:18 PM
+#CE
+
+Func EditLevelTitle()
+	Local $sInputBoxAnswer, $aMyDate, $aMyTime
+
+	$sInputBoxAnswer = InputBox("Edit Level Title", "Title of Level , don't use date, that will be added at Level save.  Use a version number if you want.", $g_GameTitle)
+	Select
+		Case @error = 0 ;OK - The string returned is valid
+			$g_GameTitle = $sInputBoxAnswer
+			_DateTimeSplit(_Now(), $aMyDate, $aMyTime)
+			$g_GameDate = StringRight($aMyDate[3], 2) & StringFormat("%2s%2s", $aMyDate[1], $aMyDate[2])
+			$g_GameChanged = True
+			DisplayTitleDate()
+		Case @error = 1 ;The Cancel button was pushed
+
+		Case @error = 3 ;The InputBox failed to open
+
+	EndSelect
+
+EndFunc   ;==>EditLevelTitle
+#CS INFO
+	50901 V1 3/28/2019 9:21:27 PM
+#CE
+
+Func SetupWhich(ByRef $aArray, $string)
+	Local $array, $z
+
+	For $z = 0 To 24
+		$aArray[$z][0] = ""
+		$aArray[$z][1] = ""
+	Next
+
+	$array = StringSplit($string, ",")
+	;_ArrayDisplay($array)
+
+	For $z = 1 To $array[0] Step 3
+		$aArray[$array[$z]][0] = $array[$z + 1]
+		$aArray[$array[$z]][1] = $array[$z + 2]
+	Next
+	;_ArrayDisplay($aArray)
+EndFunc   ;==>SetupWhich
+#CS INFO
+	26008 V2 3/27/2019 9:45:39 PM V1 3/25/2019 9:26:18 PM
+#CE
+
+Func StrDemo()
+	$g_EdQuit = False
+	$g_fEditDemo = True
+EndFunc   ;==>StrDemo
+#CS INFO
+	5765 V1 3/25/2019 9:26:18 PM
+#CE
+
+#cs
+	; one time use
+	Func ExpandLevel() ;One time use
+	Local $y, $x, $z, $a, $rr
+	$z = 3
+	For $x = 77 To 1 Step -1
+	For $y = 1 To 16
+	$g_aMap[$x + $z][$y] = $g_aMap[$x][$y]
+	Next
+	If $x = 61 Or $x = 41 Or $x = 21 Then
+	$z -= 1
+	For $y = 1 To 16
+	$g_aMap[$x + $z][$y] = 136
+	Next
+	EndIf
+	Next
+	$z = 4
+	For $y = 16 To 1 Step -1
+	For $x = 1 To 80
+	$g_aMap[$x][$y + $z] = $g_aMap[$x][$y]
+	Next
+	If $y = 4 Or $y = 7 Or $y = 10 Or $y = 13 Then
+	$z -= 1
+	For $x = 1 To 80
+	$g_aMap[$x][$y + $z] = 136
+	Next
+	EndIf
+	Next
+	EdSaveLevel()
+	EdLoadLevel()
+	EndFunc   ;==>ExpandLevel
+#ce
 
 Func EdSaveLevel()
-	Local $e, $hlv, $x, $y
+	Local $e, $hlv, $x, $y, $aMyDate, $aMyTime
 
 	If $g_FileName = "" Then
 		MsgBox($MB_TOPMOST, "Save lever, filename not set", "No filename, on to do list")
@@ -497,6 +979,15 @@ Func EdSaveLevel()
 
 	FileChangeDir(@ScriptDir)
 
+	If $g_GameChanged Then
+		; Write today's date as YYMMDD
+		_DateTimeSplit(_Now(), $aMyDate, $aMyTime)
+		FileWrite($hlv, StringRight($aMyDate[3], 2) & StringFormat("%2s%2s", $aMyDate[1], $aMyDate[2]))
+	Else
+		If $g_GameDate <> 0 Then
+			FileWrite($hlv, $g_GameDate)
+		EndIf
+	EndIf
 	FileWrite($hlv, $g_GameTitle)
 	FileWrite($hlv, BinaryMid(127, 1, 1))
 
@@ -509,15 +1000,15 @@ Func EdSaveLevel()
 
 	FileClose($hlv)
 
-	MsgBox($MB_TOPMOST, "Save level", "Level saved to " & $g_FileName, 5)
+	MsgBox($MB_TOPMOST, "Save level", "Level saved to " & $g_FileName, 2)
 
 EndFunc   ;==>EdSaveLevel
 #CS INFO
-	47922 V2 2/24/2019 6:05:52 PM V1 2/24/2019 12:43:53 AM
+	70105 V4 3/28/2019 9:21:27 PM V3 3/27/2019 9:45:39 PM V2 2/24/2019 6:05:52 PM V1 2/24/2019 12:43:53 AM
 #CE
 
 Func EdLoadLevel()
-	Local $hlv, $x, $y, $a, $PleaseWait, $FileName, $aPos
+	Local $hlv, $x, $y, $a, $PleaseWait, $FileName, $aPos, $aMyDate, $aMyTime
 
 	While 1
 		If $g_fEditDemo = False Then
@@ -547,6 +1038,8 @@ Func EdLoadLevel()
 
 	SayLoadLevel(1, $g_ScreenEdit, $FileName)
 
+	$g_GameChanged = False
+
 	$g_GameTitle = ""
 	$a = ""
 	Do
@@ -554,9 +1047,19 @@ Func EdLoadLevel()
 		$a = FileRead($hlv, 1)
 	Until $a = 127 ;"7F"
 
+	$g_GameDate = StringLeft($g_GameTitle, 6)
+	If StringIsDigit(StringLeft($g_GameDate, 2)) = 1 Then ;all numbers
+		$g_GameTitle = StringMid($g_GameTitle, 7)
+	Else ; Not all numberts
+		; game date today's date as YYMMDD
+		;	_DateTimeSplit(_Now(), $aMyDate, $aMyTime)
+		;	$g_GameDate = StringRight($aMyDate[3], 2) & StringFormat("%2s%2s", $aMyDate[1], $aMyDate[2])
+		$g_GameDate = 0
+	EndIf
+
 	;Offset
-	$s_iMapOffsetX = 0
-	$s_iMapOffsetY = 1
+	;	$s_iMapOffsetX = 0
+	;	$s_iMapOffsetY = 1
 
 	For $y = 1 To 20 ;$s_iMapSizeY
 		For $x = 1 To 80 ;$s_iMapSizeX
@@ -565,12 +1068,14 @@ Func EdLoadLevel()
 		Next
 	Next
 	FileClose($hlv)
+	DisplayTitleDate()
+
 	EditStatus()
 	SayLoadLevel()
 
 EndFunc   ;==>EdLoadLevel
 #CS INFO
-	72151 V5 3/15/2019 8:15:41 PM V4 3/11/2019 6:15:52 PM V3 3/11/2019 2:08:18 AM V2 2/24/2019 6:05:52 PM
+	106489 V8 3/28/2019 9:21:27 PM V7 3/27/2019 9:45:39 PM V6 3/26/2019 8:43:36 PM V5 3/15/2019 8:15:41 PM
 #CE
 
 ;Load Level
@@ -618,24 +1123,22 @@ EndFunc   ;==>SayLoadLevel
 #CE
 
 Func EditStatus()
-	Local $o, $pk, $tx
+	Local $tx
+	Local Static $txselect = "", $txunder = ""
 
 	$tx = EditObject(-2)
-	$pk = EditObject($g_iPick)
-	If $g_fEdRepeat Then
-		$pk &= " -- Repeat On"
+	If $tx <> $txunder Then
+		$txunder = $tx
+		GUICtrlSetData($g_Under, $tx)
 	EndIf
-	$o = "Cursor Object is " & $tx & "  --  Picked object is " & $pk
-	If Not ($g_cEdStKp = $o) Then
-		$g_cEdStKp = $o
-		GUICtrlSetData($g_iStatusEdit, $o)
-		GUICtrlSetBkColor($g_iStatusEdit, $COLOR_SKYBLUE)
-		GUICtrlSetFont($g_iStatusEdit, 12, 400, 0, "MS Sans Serif")
+	$tx = EditObject($g_iPick)
+	If $tx <> $txselect Then
+		$txselect = $tx
+		GUICtrlSetData($g_Selected, $tx)
 	EndIf
-
 EndFunc   ;==>EditStatus
 #CS INFO
-	30897 V2 2/24/2019 6:05:52 PM V1 2/24/2019 12:43:53 AM
+	23159 V3 3/26/2019 8:43:36 PM V2 2/24/2019 6:05:52 PM V1 2/24/2019 12:43:53 AM
 #CE
 
 ;$a >0 return text for $a  -1 use aMap location at   -2  display cur
@@ -713,6 +1216,21 @@ EndFunc   ;==>EditObject
 
 ;---------------------------------------------------
 ;Both Edit and Game
+
+Func DisplayTitleDate()
+	Local $x
+
+	If $g_GameDate = 0 Then
+		GUICtrlSetData($g_EdTitle, $g_GameTitle)
+	Else
+		$x = Trim(StringMid($g_GameDate, 3, 2)) & "/" & Trim(StringMid($g_GameDate, 5, 2)) & "/20" & StringLeft($g_GameDate, 2)
+		GUICtrlSetData($g_EdTitle, $g_GameTitle & " -- " & $x)
+	EndIf
+EndFunc   ;==>DisplayTitleDate
+#CS INFO
+	23394 V1 3/28/2019 9:21:27 PM
+#CE
+
 Func ClearScreen()
 	Local $Color, $vx, $vy, $x, $y
 
@@ -828,7 +1346,7 @@ Func StartScreen()
 		$Action4 = GUICtrlCreateLabel('4. Settings  (not functional)', $c_iSSleft, $iLine, $c_iSSwidth, 24) ; Height is twice font size
 		GUICtrlSetFont(-1, 12, 400, 0, "MS Sans Serif")
 		$iLine += 24
-		$ActionE = GUICtrlCreateLabel('E. Edit Level (broken)-redoing', $c_iSSleft, $iLine, $c_iSSwidth, 24) ; Height is twice font size
+		$ActionE = GUICtrlCreateLabel('E. Edit Level', $c_iSSleft, $iLine, $c_iSSwidth, 24) ; Height is twice font size
 		GUICtrlSetFont(-1, 12, 400, 0, "MS Sans Serif")
 		$iLine += 24 * 2
 		$ActionQ = GUICtrlCreateLabel('Q. Quit', $c_iSSleft, $iLine, $c_iSSwidth, 24) ; Height is twice font size
@@ -1088,7 +1606,6 @@ Func ShowBlock() ;around you
 							Switch $g_aMap[$x][$y]
 								Case 17, 18
 									Show2List($x, $y) ; = 17
-									;$flag = True
 							EndSwitch
 						EndIf
 					Next
@@ -1099,7 +1616,7 @@ Func ShowBlock() ;around you
 	EndIf
 EndFunc   ;==>ShowBlock
 #CS INFO
-	26501 V2 2/24/2019 6:05:52 PM V1 2/24/2019 12:43:53 AM
+	25519 V3 3/26/2019 8:43:36 PM V2 2/24/2019 6:05:52 PM V1 2/24/2019 12:43:53 AM
 #CE
 
 ;Global $g_aHidden[50][4] ;0 = 0,1 used : 1 New 1=Show 2=Hide, 0=no Change, 2 X : 3 Y
@@ -1178,7 +1695,7 @@ EndFunc   ;==>Collision
 
 ;=====================================================
 Func Game($Level)
-	Local $flag, $y
+	Local $flag, $y, $NextMsg
 
 	;Game Loop
 	DisplayStatus(98)
@@ -1202,6 +1719,7 @@ Func Game($Level)
 
 	$g_cKeyEvent = False
 	$g_iDirection = "-"
+	$NextMsg = 0
 
 	Local $aAccelKey[][] = [["{RIGHT}", $g_cGright], ["{LEFT}", $g_cGleft], ["c", $g_cGquit], ["{DOWN}", $g_cGdown], ["{ESC}", $g_cGdie]]
 	GUISetAccelerators($aAccelKey, $g_ScreenGame)
@@ -1219,7 +1737,12 @@ Func Game($Level)
 			BonusBar()
 			ExitLoop
 		EndIf
-		$y = GUIGetMsg()
+		If $NextMsg = 0 Then
+			$y = GUIGetMsg()
+		Else
+			$y = $NextMsg
+			$NextMsg = 0
+		EndIf
 		If $y > 0 Then
 			Switch $y
 				Case $g_cGleft
@@ -1245,6 +1768,13 @@ Func Game($Level)
 					Until GUIGetMsg() <> $g_cGdie
 					$g_iDead = 5
 			EndSwitch
+		Else
+			If $y <> 0 Then
+				Do
+					$y = GUIGetMsg()
+				Until $y = 0
+				$NextMsg = $y
+			EndIf
 		EndIf
 
 		MoveYou()
@@ -1267,7 +1797,7 @@ Func Game($Level)
 
 EndFunc   ;==>Game
 #CS INFO
-	122646 V12 3/17/2019 2:57:13 AM V11 3/17/2019 1:23:00 AM V10 3/15/2019 8:15:41 PM V9 3/15/2019 1:53:48 AM
+	133178 V13 3/28/2019 9:21:27 PM V12 3/17/2019 2:57:13 AM V11 3/17/2019 1:23:00 AM V10 3/15/2019 8:15:41 PM
 #CE
 
 Func Tick() ; ave time in 50ms  per loop  + 100ms
@@ -1296,8 +1826,6 @@ EndFunc   ;==>Tick
 Func LoadLevel($Level)
 	Local $a, $x, $y, $sLevel, $hlv
 
-if $Level > 1 then $Level = 1
-
 	If $g_fEditDemo Then
 		$g_iLives = 99
 		$hlv = FileOpen($g_FileName, $FO_BINARY)
@@ -1323,9 +1851,23 @@ if $Level > 1 then $Level = 1
 		$a = FileRead($hlv, 1)
 	Until $a = 127 ;"7F"
 
+	; Fix old format or it someone changes level title outside of program
+	$g_GameDate = StringLeft($g_GameTitle, 6)
+	If StringIsDigit(StringLeft($g_GameDate, 2)) = 1 Then ;all numbers
+		$g_GameTitle = StringMid($g_GameTitle, 7)
+	Else ; Not all numberts
+		; tell the game NO DATE
+		$g_GameDate = 0
+	EndIf
+
 	;GUICtrlSetBkColor($ls_StatusLabel, $COLOR_GREEN)
 	;GUICtrlSetFont($ls_StatusLabel, 12, 400, 0, "MS Sans Serif")
-	GUICtrlSetData($g_cGtitle, $g_GameTitle)
+	If $g_GameDate = 0 Then
+		GUICtrlSetData($g_cGtitle, $g_GameTitle)
+	Else
+		$x = Trim(StringMid($g_GameDate, 3, 2)) & "/" & Trim(StringMid($g_GameDate, 5, 2)) & "/20" & StringLeft($g_GameDate, 2)
+		GUICtrlSetData($g_cGtitle, $g_GameTitle & " -- " & $x)
+	EndIf
 
 	;Offset
 	;$s_iMapOffsetX = 0 ;Int(($s_iBoxX - $s_iMapSizeX) / 2) - 1
@@ -1458,7 +2000,7 @@ if $Level > 1 then $Level = 1
 	DisplayStatus(99)
 EndFunc   ;==>LoadLevel
 #CS INFO
-	271211 V8 3/21/2019 4:38:57 PM V7 3/20/2019 8:28:55 PM V6 3/11/2019 6:15:52 PM V5 3/11/2019 2:08:18 AM
+	309324 V9 3/27/2019 9:45:39 PM V8 3/21/2019 4:38:57 PM V7 3/20/2019 8:28:55 PM V6 3/11/2019 6:15:52 PM
 #CE
 
 Func MoveObj()
@@ -1809,33 +2351,36 @@ EndFunc   ;==>DoKey
 
 Func DisplayKey($do)
 	Local Static $KeyLabel
-
+	;pause("Key " & $do)
 	Switch $do
 		Case 0 ;Create label
-			$KeyLabel = GUICtrlCreateLabel("KEY  ", $s_iHalfway, $s_iLineTop + $s_iLineSpace * 5, $s_iHalfway - $s_iTextBorder, 24, $SS_RIGHT)
+			$KeyLabel = GUICtrlCreateLabel("KEY  ", $s_iHalfway, $s_iLineTop + $s_iLineSpace * 3, $s_iHalfway - $s_iTextBorder, 24, $SS_RIGHT)
 			GUICtrlSetFont(-1, 12, 400, 0, "MS Sans Serif")
 		Case 1 ; Updated label
 
 			If $g_fHitKey Then
+				;pause("On")
 				GUICtrlSetData($KeyLabel, "KEY  ")
 				GUICtrlSetFont($KeyLabel, 12, 400, 0, "MS Sans Serif")
 			Else
+				;		pause("Off")
 				GUICtrlSetData($KeyLabel, "     ")
 				GUICtrlSetFont($KeyLabel, 12, 400, 0, "MS Sans Serif")
 			EndIf
 	EndSwitch
 EndFunc   ;==>DisplayKey
 #CS INFO
-	38666 V1 3/11/2019 6:15:52 PM
+	41970 V2 3/28/2019 9:21:27 PM V1 3/11/2019 6:15:52 PM
 #CE
 
 Func DisplayTorch($do)
 	Local Static $TorchLabel
-
+	;Pause("Torch " & $do)
 	Switch $do
 		Case 0 ;Create label
 			$TorchLabel = GUICtrlCreateLabel("TORCH  ", $s_iHalfway, $s_iLineTop + $s_iLineSpace * 4, $s_iHalfway - $s_iTextBorder, 24, $SS_RIGHT)
 			GUICtrlSetFont(-1, 12, 400, 0, "MS Sans Serif")
+
 		Case 1 ; Updated label
 
 			If $g_fHitTorch Then
@@ -1848,7 +2393,7 @@ Func DisplayTorch($do)
 	EndSwitch
 EndFunc   ;==>DisplayTorch
 #CS INFO
-	40904 V1 3/11/2019 6:15:52 PM
+	42419 V2 3/28/2019 9:21:27 PM V1 3/11/2019 6:15:52 PM
 #CE
 
 Func DoTorch($x, $y)
@@ -2111,9 +2656,9 @@ Func ShowObject($x, $y, $a)
 				; Check if near you location.
 				If $g_fEditMode Then
 					If $a = 12 Then
-						$Color = "HiddenLeft.jpg"
-					Else
 						$Color = "HiddenRight.jpg"
+					Else
+						$Color = "HiddenLeft.jpg"
 					EndIf
 				Else
 					If $g_fHitTorch Then
@@ -2249,7 +2794,7 @@ Func BonusBar()
 	;$s_iLineTop + $s_iLineSpace * 1, $s_iHalfway, 24
 	If $idProgressbar = 0 Then
 		$idProgressbar = GUICtrlCreateProgress($s_iHalfway - 300, $s_iLineTop + $s_iLineSpace * 2, 600, 20, $PBS_SMOOTH)
-		GUICtrlCreateLabel("Bonus", $s_iHalfway - 20, $s_iLineTop + $s_iLineSpace * 3, $s_iHalfway, 24) ; Height is twice font size
+		GUICtrlCreateLabel("Bonus", $s_iHalfway - 20, $s_iLineTop + $s_iLineSpace * 3, 100, 24) ;  100 don't make too big over write KEY on screen
 	EndIf
 	If $g_iBonus < 4500 Then
 		GUICtrlSetData($idProgressbar, (4500 - $g_iBonus) / 45)
@@ -2259,10 +2804,17 @@ Func BonusBar()
 
 EndFunc   ;==>BonusBar
 #CS INFO
-	39707 V2 3/21/2019 4:38:57 PM V1 2/26/2019 9:53:21 PM
+	40314 V3 3/28/2019 9:21:27 PM V2 3/21/2019 4:38:57 PM V1 2/26/2019 9:53:21 PM
 #CE
 
 Main()
 Exit
 
-;~T !!ScriptMine.exe V0.32 14 Mar 2019 - 3/21/2019 4:38:57 PM
+Func Trim($s)
+	Return StringStripWS($s, 7)
+EndFunc   ;==>Trim
+#CS INFO
+	4672 V1 3/27/2019 9:45:39 PM
+#CE
+
+;~T !!ScriptMine.exe V0.33 25 Mar 2019 - 3/28/2019 9:21:27 PM
