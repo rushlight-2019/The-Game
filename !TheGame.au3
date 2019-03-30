@@ -1,12 +1,12 @@
 #Region ;**** Directives created by AutoIt3Wrapper_GUI ****
-#AutoIt3Wrapper_Outfile=TheGame.exe
-#AutoIt3Wrapper_Outfile_x64=TheGame64.exe
+#AutoIt3Wrapper_Outfile=NotCompleteTheGame.exe
+#AutoIt3Wrapper_Outfile_x64=NotCompleteTheGame64.exe
 #AutoIt3Wrapper_Compile_Both=y
 #AutoIt3Wrapper_UseX64=y
 #EndRegion ;**** Directives created by AutoIt3Wrapper_GUI ****
 AutoItSetOption("MustDeclareVars", 1)
 
-Global $g_ver = "0.76c 28 Mar 19 Edit title"
+Global $g_ver = "0.77 29 Mar 19 Edit: various problems"
 
 #include <Debug.au3>
 ;_DebugSetup("The Game", True) ; start
@@ -21,8 +21,7 @@ Global $TESTING = True
 	lift instant up not wait to next tick
 	see instruction.txt
 
-	0.77   Mar 19 Load / Quit / Demo if level changed warning.
-
+	0.77 29 Mar 19 Edit: various problems
 	0.76c 28 Mar 19 Edit title
 	0.76b 28 Mar 19 Delay in C or Esc cause by mouses in Msg, added a fix
 	0.76a 28 Mar 19 Fix KEY it the bonus over paints it.
@@ -391,16 +390,16 @@ EndFunc   ;==>UpDateHiScore
 ; Read HighScore
 Func ReadIni()
 	Local $i
-	Local $a, $b ; temp array or not
+	Local $a, $c ; temp array or not
 
 	$a = IniReadSection($g_cSetting, "HighScore")
 	If @error = 0 Then
 		For $i = 1 To 8
-			$b = StringSplit($a[$i][1], "|")
-			$g_aHiScore[$i][0] = Int($b[1])
-			$g_aHiScore[$i][1] = $b[2]
-			If $b[0] = 3 Then
-				$g_aHiScore[$i][2] = $b[3]
+			$c = StringSplit($a[$i][1], "|")
+			$g_aHiScore[$i][0] = Int($c[1])
+			$g_aHiScore[$i][1] = $c[2]
+			If $c[0] = 3 Then
+				$g_aHiScore[$i][2] = $c[3]
 			Else
 				$g_aHiScore[$i][2] = "-"
 			EndIf
@@ -427,7 +426,7 @@ Func ReadIni()
 
 EndFunc   ;==>ReadIni
 #CS INFO
-	71920 V4 3/17/2019 2:57:13 AM V3 3/8/2019 8:44:22 AM V2 2/25/2019 1:58:55 AM V1 2/24/2019 6:05:52 PM
+	71926 V5 3/30/2019 12:24:33 AM V4 3/17/2019 2:57:13 AM V3 3/8/2019 8:44:22 AM V2 2/25/2019 1:58:55 AM
 #CE
 
 Func SaveHiScore()
@@ -487,7 +486,7 @@ Global $Which1[25][2]
 Global $Which2[25][2]
 Global $g_Under, $g_Selected
 
-;~~~~~~
+;~~
 Func EditScreen()
 	;Edit Screen Button
 	Local $iColumn, $fFac, $iColumnHalf, $iHalf, $iW, $string, $flag
@@ -586,20 +585,20 @@ Func EditScreen()
 		$b[18] = GUICtrlCreateButton("", $iHalf + $iW * .5, $g_iEditLine + 230, $iW, 30)
 		$b[19] = GUICtrlCreateButton("", $iHalf + $iW * 1.5, $g_iEditLine + 230, $iW, 30)
 
-		$b[20] = GUICtrlCreateButton("", $iHalf - $iW * 2.5, $g_iEditLine + 270, $iW, 30)
+		$b[20] = GUICtrlCreateButton("20", $iHalf - $iW * 2.5, $g_iEditLine + 270, $iW, 30)
 		$b[21] = GUICtrlCreateButton("", $iHalf - $iW * 1.5, $g_iEditLine + 270, $iW, 30)
 		$b[22] = GUICtrlCreateButton("", $iHalf - $iW * .5, $g_iEditLine + 270, $iW, 30)
 		$b[23] = GUICtrlCreateButton("", $iHalf + $iW * .5, $g_iEditLine + 270, $iW, 30)
 		$b[24] = GUICtrlCreateButton("", $iHalf + $iW * 1.5, $g_iEditLine + 270, $iW, 30)
 
 		;Computer Which buttons
-		$string = "0,Empty,0,1, blue,128,5,green,129,2,dark blue,130,3,darkest blue,131,4,light blue,136,6,dark green,132,8,darker red,133,7,red,134,9,earth,135,12, Hidden,17"
+		$string = "0,Empty,0,1, Blue,128,5,Green,129,2,Dark Blue,130,3,Darkest Blue,131,4,Light Blue,136,6,Dark Green,132,8,Darker Red,133,7,Red,134,9,Earth,135,12, Hidden,17,14,White,255"
 		; all use the same function so string the Color value for the function
 		SetupWhich($Which0, $string)
 
-		$string = "0,Empty,0,2,You,1,4,Diamond,2,5,Water,6,7,Key,3,9,Torch,4,8,Door,5"
-		$string &= ",10,Lift,8,11,Platform Down,9,12,Missile Off,7,13,Missile,31,14,Hidden,17"
-		$string &= ",15,Horz Right,11,16,Horz Left,13,18,Hid Right,12,19,Hid Left,14,17,Vertital,15"
+		$string = "0,Empty,0,22,You,1,4,Diamond,2,5,Water,6,7,Key,3,9,Torch,4,8,Door,5,1,Blue,128,2,Red,134,3,Green,129"
+		$string &= ",10,Lift,8,11,Ride Down,9,12,Missile Off,7,13,Missile,31,14,Hidden,17"
+		$string &= ",15,Horz Right,11,16,Horz Left,13,18,Hid Right,12,19,Hid Left,14,17,Vertical,15"
 		SetupWhich($Which1, $string)
 ;~~
 		$string = "0,Load,EdLoadLevel, 2,Save,EdSaveLevel,12,Clear,ClearScreen,15,Demo,StrDemo,4,New,Pause,19,Edit Title,EditLevelTitle"
@@ -645,7 +644,9 @@ Func EditScreen()
 			GUICtrlSetState($b[$z], $GUI_SHOW)
 		EndIf
 	Next
-;~~~
+
+	$g_fEdRepeat = False
+	GUICtrlSetBkColor($ls_bRepeat, $COLOR_RED)
 
 	Local $aAccelKey2[][] = [["{RIGHT}", $ls_idRight], ["{LEFT}", $ls_idLeft], [" ", $ls_idSpace], ["{DOWN}", $ls_idDown], ["{UP}", $ls_idUp]]
 	GUISetAccelerators($aAccelKey2, $g_ScreenEdit)
@@ -683,7 +684,7 @@ Func EditScreen()
 					GUICtrlSetFont($Which[0], 8.5, $FW_HEAVY)
 
 					$WhichCur = 0
-					For $z = 0 To 19
+					For $z = 0 To 24
 						If $Which0[$z][0] = "" Then
 							GUICtrlSetState($b[$z], $GUI_HIDE)
 						Else
@@ -696,7 +697,7 @@ Func EditScreen()
 					GUICtrlSetFont($Which[$WhichCur], 8.5, $FW_NORMAL)
 					GUICtrlSetFont($Which[1], 8.5, $FW_HEAVY)
 					$WhichCur = 1
-					For $z = 0 To 19
+					For $z = 0 To 24
 						If $Which1[$z][0] = "" Then
 							GUICtrlSetState($b[$z], $GUI_HIDE)
 						Else
@@ -823,7 +824,11 @@ Func EditScreen()
 						MsgBox($MB_TOPMOST, "String too long", "String too long!")
 					Else
 						For $z = 1 To StringLen($sLetters)
-							ShowObject($g_iEdit_Xcur + $z - 1, $g_iEdit_Ycur, Asc(StringMid($sLetters, $z, 1)))
+							If StringMid($sLetters, $z, 1) = " " Then
+								ShowObject($g_iEdit_Xcur + $z - 1, $g_iEdit_Ycur, $EMPTY)
+							Else
+								ShowObject($g_iEdit_Xcur + $z - 1, $g_iEdit_Ycur, Asc(StringMid($sLetters, $z, 1)))
+							EndIf
 						Next
 					EndIf
 
@@ -876,7 +881,7 @@ Func EditScreen()
 
 EndFunc   ;==>EditScreen
 #CS INFO
-	839372 V14 3/28/2019 9:21:27 PM V13 3/27/2019 9:45:39 PM V12 3/26/2019 8:43:36 PM V11 3/25/2019 9:26:18 PM
+	854576 V15 3/30/2019 12:24:33 AM V14 3/28/2019 9:21:27 PM V13 3/27/2019 9:45:39 PM V12 3/26/2019 8:43:36 PM
 #CE
 
 Func EditLevelTitle()
@@ -1004,7 +1009,7 @@ Func EdSaveLevel()
 
 EndFunc   ;==>EdSaveLevel
 #CS INFO
-	70105 V4 3/28/2019 9:21:27 PM V3 3/27/2019 9:45:39 PM V2 2/24/2019 6:05:52 PM V1 2/24/2019 12:43:53 AM
+	70102 V5 3/30/2019 12:24:33 AM V4 3/28/2019 9:21:27 PM V3 3/27/2019 9:45:39 PM V2 2/24/2019 6:05:52 PM
 #CE
 
 Func EdLoadLevel()
@@ -1527,16 +1532,12 @@ EndFunc   ;==>GameScreen
 #CE
 
 Func SkipPassCode($Lv)
-	If $TESTING Then
-		$TESTING = False
-		MsgBox($MB_TOPMOST, "Level Skip", "To start at Level " & $Lv + 1 & " next time enter Code: " & Code($Lv))
-		$TESTING = True
-	Else
-		MsgBox($MB_TOPMOST, "Level Skip", "To start at Level " & $Lv + 1 & " next time enter Code: " & Code($Lv))
-	EndIf
+
+	MsgBox($MB_TOPMOST, "Level Skip", "To start at Level " & $Lv + 1 & " next time enter Code: " & Code($Lv))
+
 EndFunc   ;==>SkipPassCode
 #CS INFO
-	22533 V1 2/24/2019 6:05:52 PM
+	11180 V2 3/30/2019 12:24:33 AM V1 2/24/2019 6:05:52 PM
 #CE
 
 Func Code($value)
@@ -1642,13 +1643,9 @@ Func DoList()
 	If $flag Then
 		$g_iHiddenCnt = 0
 	EndIf
-	If $_debug Then
-		If $g_iHiddenCnt > 0 Then
-		EndIf
-	EndIf
 EndFunc   ;==>DoList
 #CS INFO
-	42666 V3 3/11/2019 6:15:52 PM V2 2/24/2019 6:05:52 PM V1 2/24/2019 12:43:53 AM
+	38630 V4 3/30/2019 12:24:33 AM V3 3/11/2019 6:15:52 PM V2 2/24/2019 6:05:52 PM V1 2/24/2019 12:43:53 AM
 #CE
 
 Func Show2List($x, $y)
@@ -2769,9 +2766,6 @@ Func ShowObject($x, $y, $a)
 			$Color = Chr($a) & ".jpg"
 
 	EndSwitch
-	If $Color = "White.jpg" Then
-		_DebugReportVar("Missing picture", $a)
-	EndIf
 
 	$vx = $x + $s_iMapOffsetX
 	$vy = $s_iMapSizeY - $y + $s_iMapOffsetY
@@ -2786,7 +2780,7 @@ Func ShowObject($x, $y, $a)
 	EndIf
 EndFunc   ;==>ShowObject
 #CS INFO
-	176963 V9 3/21/2019 4:38:57 PM V8 3/20/2019 8:28:55 PM V7 3/17/2019 2:57:13 AM V6 3/8/2019 8:44:22 AM
+	171044 V10 3/30/2019 12:24:33 AM V9 3/21/2019 4:38:57 PM V8 3/20/2019 8:28:55 PM V7 3/17/2019 2:57:13 AM
 #CE
 
 Func BonusBar()
@@ -2817,4 +2811,4 @@ EndFunc   ;==>Trim
 	4672 V1 3/27/2019 9:45:39 PM
 #CE
 
-;~T !!ScriptMine.exe V0.33 25 Mar 2019 - 3/28/2019 9:21:27 PM
+;~T !!ScriptMine.exe V0.33 25 Mar 2019 - 3/30/2019 12:24:33 AM

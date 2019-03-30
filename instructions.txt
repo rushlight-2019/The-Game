@@ -87,6 +87,7 @@ Does not test for more then one you or missle.  Uses the last one loaded.  Loads
 --------------------------------------------------------------------------------
 Need to be done.
 Startup:
+Setup
 
 Game:
 Moving up object you do not die if it moving up.  
@@ -98,6 +99,4 @@ Flashy cursor?
  Save button needs R U Sure box.
 Quit/Load if level dirty then ask to save?
 
-Repeat button need reset on Clear, Load or Restart
-Move Add text to level to other side.
 NEW needs a function
