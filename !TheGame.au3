@@ -6,7 +6,7 @@
 #EndRegion ;**** Directives created by AutoIt3Wrapper_GUI ****
 AutoItSetOption("MustDeclareVars", 1)
 
-Global $g_ver = "0.77 29 Mar 19 Edit: various problems"
+Global $g_ver = "0.78 31 Mar 19 Allow One only editor objects"
 
 #include <Debug.au3>
 ;_DebugSetup("The Game", True) ; start
@@ -21,7 +21,8 @@ Global $TESTING = True
 	lift instant up not wait to next tick
 	see instruction.txt
 
-	0.77 29 Mar 19 Edit: various problems
+	0.78 31 Mar 19 Allow One only editor objects
+	0.77 30 Mar 19 Edit: various problems, fix flicker editor
 	0.76c 28 Mar 19 Edit title
 	0.76b 28 Mar 19 Delay in C or Esc cause by mouses in Msg, added a fix
 	0.76a 28 Mar 19 Fix KEY it the bonus over paints it.
@@ -123,10 +124,10 @@ Global $TESTING = True
 	9 ; ~
 
 	11 ;Hor Right
-	12   ;Hor Letter hidden block
+	12   ;Hor hidden block
 	13 ;Hor Left
-	14   ;Hor Block hidden
-	15 ; V block  can ride down but not up.
+	14   ;Hor Block hidden (not in editor)
+	15 ; V block  can ride down but not up. should die if hit going up
 	16   ; V block hidden
 
 	17 Hidden walls black (default)
@@ -142,7 +143,7 @@ Global $TESTING = True
 	=128-255 Color
 
 	128 ;blue
-	255 ;White
+	254 ;White
 	129 ;green
 	130 ;blue darkblue
 	131 ;blue darkestblue
@@ -152,7 +153,7 @@ Global $TESTING = True
 	134 ;red
 	135 ;earth
 	136 Light Blue like water
-
+	255 (NULL)
 	collision
 #ce ----------------------------------------------------------------------------
 
@@ -231,6 +232,7 @@ Global Static $s_MissileX = 4
 Global Static $s_MissileY = 5
 Global Static $s_HidAtc = 5
 
+Global Static $NULL = 255
 Global Static $YOU = 1
 Global $g_iYouX = 0
 Global $g_iYouY = 0
@@ -269,6 +271,19 @@ Global $g_aHiScore[10][3] ; data load by INI.  10 = 8 date, 1 cnt, 1 update
 Global $g_ScoreStr1 = False
 
 ;Edit Screen
+Global $g_fEdYou = False
+Global $g_fEdMissile = False
+Global $g_fEdSwitch = False
+Global $g_fEdKey = False
+Global $g_fEdTorch = False
+
+Global $g_EdQuit
+Global $Which0[25][2]
+Global $Which1[25][2]
+Global $Which2[25][2]
+Global $g_Under, $g_Selected
+Global $b[25]
+
 Global $g_EdTitle
 Global $g_iEditLines = 10
 Global $g_aEditMap[$s_iBoxX][$s_iBoxY]
@@ -328,8 +343,6 @@ Func Main()
 
 	ReadIni()
 
-	;EditScreen()
-
 	While $fOkProgram
 		If $g_fEditDemo Then
 			$i = 5
@@ -365,7 +378,7 @@ Func Main()
 	EndIf
 EndFunc   ;==>Main
 #CS INFO
-	33613 V4 3/28/2019 9:21:27 PM V3 3/25/2019 12:04:08 AM V2 2/24/2019 6:05:52 PM V1 2/24/2019 10:03:19 AM
+	32475 V5 3/30/2019 6:02:52 PM V4 3/28/2019 9:21:27 PM V3 3/25/2019 12:04:08 AM V2 2/24/2019 6:05:52 PM
 #CE
 
 ;INI Section Score  ScoreWho
@@ -480,20 +493,14 @@ EndFunc   ;==>Instructions
 
 #ce
 
-Global $g_EdQuit
-Global $Which0[25][2]
-Global $Which1[25][2]
-Global $Which2[25][2]
-Global $g_Under, $g_Selected
-
 ;~~
 Func EditScreen()
 	;Edit Screen Button
 	Local $iColumn, $fFac, $iColumnHalf, $iHalf, $iW, $string, $flag
 	Local $mousePos, $tPoint, $x, $y, $z, $nMsg, $sLetters
 
-	Local Static $Title, $Which[3], $b[25]
-	Local Static $ls_idDown, $ls_idRight, $ls_idLeft, $ls_idUp, $ls_idSpace, $ls_bQuit
+	Local Static $Title, $Which[3]
+	Local Static $ls_idDown, $ls_idRight, $ls_idLeft, $ls_idUp, $ls_idSpace, $ls_bQuit, $ls_idPick
 	Local Static $ls_bClear, $ls_bDemo, $ls_bKeyInput, $ls_bLoad, $ls_bRepeat, $ls_bSave
 
 	If $g_fEditDemo = False Then
@@ -521,7 +528,7 @@ Func EditScreen()
 
 		For $y = 0 To $s_iBoxY - 1
 			For $x = 0 To $s_iBoxX - 1
-				$g_aMap[$x][$y] = -1
+				$g_aMap[$x][$y] = -1 ;Ed OK
 				$g_aEditMap[$x][$y] = GUICtrlCreatePic(@ScriptDir & "\Pic\Edge.jpg", $x * $g_Size + $s_iBorder, $y * $g_Size + $s_iBorder, $g_Size, $g_Size)
 			Next
 		Next
@@ -531,6 +538,7 @@ Func EditScreen()
 		$ls_idLeft = GUICtrlCreateDummy()
 		$ls_idUp = GUICtrlCreateDummy()
 		$ls_idSpace = GUICtrlCreateDummy()
+		$ls_idPick = GUICtrlCreateDummy()
 
 		$iColumn = Int($s_iLineX / 10)
 		$fFac = $iColumn / 123
@@ -538,7 +546,7 @@ Func EditScreen()
 		$iColumnHalf = Int($iColumn / 2)
 		$iHalf = Int($s_iLineX / 2)
 		$iW = Int($fFac * 100)
-;~~
+
 		$g_EdTitle = GUICtrlCreateLabel("Title - Date", $s_iBorder, $g_iEditLine, $s_iLineX, 20, $SS_CENTER)
 		GUICtrlSetFont(-1, 12, 400, 0, "MS Sans Serif")
 
@@ -592,15 +600,14 @@ Func EditScreen()
 		$b[24] = GUICtrlCreateButton("", $iHalf + $iW * 1.5, $g_iEditLine + 270, $iW, 30)
 
 		;Computer Which buttons
-		$string = "0,Empty,0,1, Blue,128,5,Green,129,2,Dark Blue,130,3,Darkest Blue,131,4,Light Blue,136,6,Dark Green,132,8,Darker Red,133,7,Red,134,9,Earth,135,12, Hidden,17,14,White,255"
+		$string = "0,Empty,0,1, Blue,128,5,Green,129,2,Dark Blue,130,3,Darkest Blue,131,4,Light Blue,136,6,Dark Green,132,8,Darker Red,133,7,Red,134,9,Earth,135,12, Hidden,17,14,White,254"
 		; all use the same function so string the Color value for the function
 		SetupWhich($Which0, $string)
 
 		$string = "0,Empty,0,22,You,1,4,Diamond,2,5,Water,6,7,Key,3,9,Torch,4,8,Door,5,1,Blue,128,2,Red,134,3,Green,129"
 		$string &= ",10,Lift,8,11,Ride Down,9,12,Missile Off,7,13,Missile,31,14,Hidden,17"
-		$string &= ",15,Horz Right,11,16,Horz Left,13,18,Hid Right,12,19,Hid Left,14,17,Vertical,15"
+		$string &= ",15,Horz Right,11,16,Horz Left,13,18,Hid move,12,17,Vertical,15"
 		SetupWhich($Which1, $string)
-;~~
 		$string = "0,Load,EdLoadLevel, 2,Save,EdSaveLevel,12,Clear,ClearScreen,15,Demo,StrDemo,4,New,Pause,19,Edit Title,EditLevelTitle"
 		SetupWhich($Which2, $string)
 		;_ArrayDisplay($Which0)
@@ -628,8 +635,7 @@ Func EditScreen()
 
 	$g_iDirection = 0
 
-	EditObject(-2)
-	EditStatus()
+	EditStatus() ; First show
 	$g_EdQuit = True
 	$nMsg = 0
 
@@ -648,7 +654,7 @@ Func EditScreen()
 	$g_fEdRepeat = False
 	GUICtrlSetBkColor($ls_bRepeat, $COLOR_RED)
 
-	Local $aAccelKey2[][] = [["{RIGHT}", $ls_idRight], ["{LEFT}", $ls_idLeft], [" ", $ls_idSpace], ["{DOWN}", $ls_idDown], ["{UP}", $ls_idUp]]
+	Local $aAccelKey2[][] = [["{RIGHT}", $ls_idRight], ["{LEFT}", $ls_idLeft], [" ", $ls_idSpace], ["{DOWN}", $ls_idDown], ["{UP}", $ls_idUp], ["c", $ls_idPick], ["m", $ls_idPick]]
 	GUISetAccelerators($aAccelKey2, $g_ScreenEdit)
 
 	;Edit Loop
@@ -671,6 +677,7 @@ Func EditScreen()
 						Case 0
 							$g_iPick = Int($Which0[$z][1])
 					EndSwitch
+					EditStatus()
 					ExitLoop
 				EndIf
 			Next
@@ -697,12 +704,36 @@ Func EditScreen()
 					GUICtrlSetFont($Which[$WhichCur], 8.5, $FW_NORMAL)
 					GUICtrlSetFont($Which[1], 8.5, $FW_HEAVY)
 					$WhichCur = 1
+
 					For $z = 0 To 24
 						If $Which1[$z][0] = "" Then
 							GUICtrlSetState($b[$z], $GUI_HIDE)
 						Else
 							GUICtrlSetData($b[$z], $Which1[$z][0])
 							GUICtrlSetState($b[$z], $GUI_SHOW + $GUI_ENABLE)
+							Switch $Which1[$z][1]
+								Case $YOU
+									If $g_fEdYou Then
+										GUICtrlSetState($b[$z], $GUI_HIDE)
+									EndIf
+								Case 31
+									If $g_fEdMissile Then
+										GUICtrlSetState($b[$z], $GUI_HIDE)
+									EndIf
+								Case 7
+									If $g_fEdSwitch Then
+										GUICtrlSetState($b[$z], $GUI_HIDE)
+									EndIf
+								Case 3
+									If $g_fEdKey Then
+										GUICtrlSetState($b[$z], $GUI_HIDE)
+									EndIf
+								Case 4
+									If $g_fEdTorch Then
+										GUICtrlSetState($b[$z], $GUI_HIDE)
+									EndIf
+							EndSwitch
+
 						EndIf
 					Next
 
@@ -730,10 +761,11 @@ Func EditScreen()
 						$g_iEditX = $s_iBoxX - 2
 					EndIf
 					If $g_fEdRepeat Then
-						$g_aMap[$g_iEdit_Xcur][$g_iEdit_Ycur] = $g_iPick
+						;$g_aMap[$g_iEdit_Xcur][$g_iEdit_Ycur] = $g_iPick ;ED WRONG
+						ShowObject($g_iEdit_Xcur, $g_iEdit_Ycur, $g_iPick) ;How what under  Cursor
 						$g_GameChanged = True
 					EndIf
-					ShowObject($g_iEdit_Xcur, $g_iEdit_Ycur, -1)
+					ShowObject($g_iEdit_Xcur, $g_iEdit_Ycur, -1) ;How what under  Cursor
 					ShowObject($g_iEditX, $g_iEditY, -1)
 					$g_iEdit_Xcur = $g_iEditX
 					$g_iEdit_Ycur = $g_iEditY
@@ -748,7 +780,8 @@ Func EditScreen()
 						$g_iEditX = 1
 					EndIf
 					If $g_fEdRepeat Then
-						$g_aMap[$g_iEdit_Xcur][$g_iEdit_Ycur] = $g_iPick
+						;						$g_aMap[$g_iEdit_Xcur][$g_iEdit_Ycur] = $g_iPick ;ED WRONG
+						ShowObject($g_iEdit_Xcur, $g_iEdit_Ycur, $g_iPick) ;How what under  Cursor
 						$g_GameChanged = True
 					EndIf
 					ShowObject($g_iEdit_Xcur, $g_iEdit_Ycur, -1)
@@ -766,7 +799,8 @@ Func EditScreen()
 						$g_iEditY = 1
 					EndIf
 					If $g_fEdRepeat Then
-						$g_aMap[$g_iEdit_Xcur][$g_iEdit_Ycur] = $g_iPick
+						;						$g_aMap[$g_iEdit_Xcur][$g_iEdit_Ycur] = $g_iPick ;ED WRONG
+						ShowObject($g_iEdit_Xcur, $g_iEdit_Ycur, $g_iPick) ;How what under  Cursor
 						$g_GameChanged = True
 					EndIf
 					ShowObject($g_iEdit_Xcur, $g_iEdit_Ycur, -1)
@@ -783,7 +817,8 @@ Func EditScreen()
 						$g_iEditY = $s_iBoxY - 2
 					EndIf
 					If $g_fEdRepeat Then
-						$g_aMap[$g_iEdit_Xcur][$g_iEdit_Ycur] = $g_iPick
+						;						$g_aMap[$g_iEdit_Xcur][$g_iEdit_Ycur] = $g_iPick ;ED WRONG
+						ShowObject($g_iEdit_Xcur, $g_iEdit_Ycur, $g_iPick) ;How what under  Cursor
 						$g_GameChanged = True
 					EndIf
 					ShowObject($g_iEdit_Xcur, $g_iEdit_Ycur, -1)
@@ -793,43 +828,47 @@ Func EditScreen()
 					EditStatus()
 				Case $ls_idSpace
 					;					$g_iDirection = 5
-					$g_aMap[$g_iEdit_Xcur][$g_iEdit_Ycur] = $g_iPick
+					;$g_aMap[$g_iEdit_Xcur][$g_iEdit_Ycur] = $g_iPick ;ED WRONG
 					$g_GameChanged = True
-					ShowObject($g_iEdit_Xcur, $g_iEdit_Ycur, -1)
-					ShowObject($g_iEditX, $g_iEditY, -1)
-					$g_iEdit_Xcur = $g_iEditX
-					$g_iEdit_Ycur = $g_iEditY
+					ShowObject($g_iEdit_Xcur, $g_iEdit_Ycur, $g_iPick)
+					;ShowObject($g_iEditX, $g_iEditY, -1)
+					;$g_iEdit_Xcur = $g_iEditX
+					;$g_iEdit_Ycur = $g_iEditY
 					EditStatus()
-
+				Case $ls_idPick
+					$g_iPick = $g_aMap[$g_iEdit_Xcur][$g_iEdit_Ycur]
+					EditStatus()
 				Case $ls_bRepeat
 					If $g_fEdRepeat Then
 						$g_fEdRepeat = False
 						GUICtrlSetBkColor($ls_bRepeat, $COLOR_RED)
 					Else
 						$g_fEdRepeat = True
-						$g_aMap[$g_iEdit_Xcur][$g_iEdit_Ycur] = $g_iPick
+						;						$g_aMap[$g_iEdit_Xcur][$g_iEdit_Ycur] = $g_iPick ;ED WRONG
+						ShowObject($g_iEdit_Xcur, $g_iEdit_Ycur, $g_iPick) ;How what under  Cursor
 						$g_GameChanged = True
 						GUICtrlSetBkColor($ls_bRepeat, $COLOR_GREEN)
+						EditStatus()
 					EndIf
 
 				Case $ls_bKeyInput
 					;	HotKeySet("{Space}") ;5
 					GUISetAccelerators(1, $g_ScreenEdit)
-					$sLetters = InputBox("Input String", "Display upper case A-Z 0-9 /:-" & @CRLF)
-					$sLetters = StringUpper($sLetters)
+					$sLetters = InputBox("Input String", "Display upper case A-Z 0-9 /:-", "", "", -1, -1, Default, Default, 0, $g_ScreenEdit)
 					GUISetAccelerators($aAccelKey2, $g_ScreenEdit)
-					;	HotKeySet("{Space}", "EdSpace") ;5
-
-					If StringLen($sLetters) + $g_iEdit_Xcur > 80 Then ;Too long
-						MsgBox($MB_TOPMOST, "String too long", "String too long!")
-					Else
-						For $z = 1 To StringLen($sLetters)
-							If StringMid($sLetters, $z, 1) = " " Then
-								ShowObject($g_iEdit_Xcur + $z - 1, $g_iEdit_Ycur, $EMPTY)
-							Else
-								ShowObject($g_iEdit_Xcur + $z - 1, $g_iEdit_Ycur, Asc(StringMid($sLetters, $z, 1)))
-							EndIf
-						Next
+					If $sLetters <> "" Then
+						$sLetters = StringUpper($sLetters)
+						If StringLen($sLetters) + $g_iEdit_Xcur > 80 Then ;Too long
+							MsgBox($MB_TOPMOST, "String too long", "String too long!")
+						Else
+							For $z = 1 To StringLen($sLetters)
+								If StringMid($sLetters, $z, 1) = " " Then
+									ShowObject($g_iEdit_Xcur + $z - 1, $g_iEdit_Ycur, $EMPTY)
+								Else
+									ShowObject($g_iEdit_Xcur + $z - 1, $g_iEdit_Ycur, Asc(StringMid($sLetters, $z, 1)))
+								EndIf
+							Next
+						EndIf
 					EndIf
 
 				Case $ls_bQuit
@@ -837,15 +876,14 @@ Func EditScreen()
 
 			EndSwitch
 		EndIf ;Flag
-		EditStatus()
 
 		If _IsPressed("02", $g_hDLL) Then ; 02 right button
 			While _IsPressed("02", $g_hDLL)
 				Sleep(200)
 			WEnd
-			$g_aMap[$g_iEdit_Xcur][$g_iEdit_Ycur] = $g_iPick
+			;$g_aMap[$g_iEdit_Xcur][$g_iEdit_Ycur] = $g_iPick ;ED WRONG
 			$g_GameChanged = True
-			;				ShowObject($g_iEdit_Xcur, $g_iEdit_Ycur, -1)
+			ShowObject($g_iEdit_Xcur, $g_iEdit_Ycur, $g_iPick)
 			EditStatus()
 
 		ElseIf _IsPressed("01", $g_hDLL) Then ; 02 right button
@@ -881,7 +919,7 @@ Func EditScreen()
 
 EndFunc   ;==>EditScreen
 #CS INFO
-	854576 V15 3/30/2019 12:24:33 AM V14 3/28/2019 9:21:27 PM V13 3/27/2019 9:45:39 PM V12 3/26/2019 8:43:36 PM
+	938002 V17 3/31/2019 4:59:34 PM V16 3/30/2019 6:02:52 PM V15 3/30/2019 12:24:33 AM V14 3/28/2019 9:21:27 PM
 #CE
 
 Func EditLevelTitle()
@@ -1062,14 +1100,29 @@ Func EdLoadLevel()
 		$g_GameDate = 0
 	EndIf
 
-	;Offset
-	;	$s_iMapOffsetX = 0
-	;	$s_iMapOffsetY = 1
+	$g_fEdYou = False ; $YOU 1
+	$g_fEdMissile = False ; 31
+	$g_fEdSwitch = False ;7
+	$g_fEdKey = False ;3
+	$g_fEdTorch = False ;4
 
 	For $y = 1 To 20 ;$s_iMapSizeY
 		For $x = 1 To 80 ;$s_iMapSizeX
-			$g_aMap[$x][$y] = Int(FileRead($hlv, 1), 1)
+			$g_aMap[$x][$y] = Int(FileRead($hlv, 1), 1) ; ED WRONG
 			ShowObject($x, $y, -1)
+
+			Switch $g_aMap[$x][$y]
+				Case $YOU
+					$g_fEdYou = True
+				Case 31
+					$g_fEdMissile = True
+				Case 7
+					$g_fEdSwitch = True
+				Case 3
+					$g_fEdKey = True
+				Case 4
+					$g_fEdTorch = True
+			EndSwitch
 		Next
 	Next
 	FileClose($hlv)
@@ -1080,7 +1133,7 @@ Func EdLoadLevel()
 
 EndFunc   ;==>EdLoadLevel
 #CS INFO
-	106489 V8 3/28/2019 9:21:27 PM V7 3/27/2019 9:45:39 PM V6 3/26/2019 8:43:36 PM V5 3/15/2019 8:15:41 PM
+	124708 V10 3/31/2019 4:59:34 PM V9 3/30/2019 6:02:52 PM V8 3/28/2019 9:21:27 PM V7 3/27/2019 9:45:39 PM
 #CE
 
 ;Load Level
@@ -1102,8 +1155,7 @@ Func SayLoadLevel($Mode = 0, $Screen = 0, $FileName = "") ;Screen that it going 
 		$aPos = WinGetPos($Screen)
 		$x = $aPos[0] - (196 / 2) + ($g_Size * 41)
 		$y = $aPos[1] + (8 * $g_Size)
-
-		$PleaseWait = GUICreate("", 186, 92, $x, $y)
+		$PleaseWait = GUICreate("", 186, 92, $x, $y, -1, BitOR($WS_EX_TOPMOST, $WS_EX_WINDOWEDGE))
 		Switch $Mode
 			Case 1
 				GUICtrlCreateLabel("Loading Level", 8, 8, 170, 25, $SS_CENTER)
@@ -1124,14 +1176,14 @@ Func SayLoadLevel($Mode = 0, $Screen = 0, $FileName = "") ;Screen that it going 
 
 EndFunc   ;==>SayLoadLevel
 #CS INFO
-	74375 V2 3/15/2019 8:15:41 PM V1 3/11/2019 2:08:18 AM
+	83691 V3 3/31/2019 4:59:34 PM V2 3/15/2019 8:15:41 PM V1 3/11/2019 2:08:18 AM
 #CE
 
 Func EditStatus()
 	Local $tx
 	Local Static $txselect = "", $txunder = ""
 
-	$tx = EditObject(-2)
+	$tx = EditObject(-2) ; Show Cursor and return under
 	If $tx <> $txunder Then
 		$txunder = $tx
 		GUICtrlSetData($g_Under, $tx)
@@ -1143,14 +1195,15 @@ Func EditStatus()
 	EndIf
 EndFunc   ;==>EditStatus
 #CS INFO
-	23159 V3 3/26/2019 8:43:36 PM V2 2/24/2019 6:05:52 PM V1 2/24/2019 12:43:53 AM
+	25794 V5 3/31/2019 4:59:34 PM V4 3/30/2019 6:02:52 PM V3 3/26/2019 8:43:36 PM V2 2/24/2019 6:05:52 PM
 #CE
 
+;~~
 ;$a >0 return text for $a  -1 use aMap location at   -2  display cur
 Func EditObject($a)
 	Local $tx, $vx, $vy
 
-	$tx = ""
+	;EditObject(-2)
 	If $a = -2 Then
 		$vx = $g_iEdit_Xcur + $s_iMapOffsetX
 		$vy = $s_iMapSizeY - $g_iEdit_Ycur + $s_iMapOffsetY
@@ -1159,20 +1212,22 @@ Func EditObject($a)
 	If $a < 0 Then
 		$a = $g_aMap[$g_iEdit_Xcur][$g_iEdit_Ycur]
 	EndIf
+
+	$tx = ""
 	Switch $a
 		Case 0
 			$tx = "Empty"
 		Case 11 ;Hor Right
-			$tx = "HorRight"
+			$tx = "Horz Right"
 		Case 13 ;Hor Left
-			$tx = "HorLeft"
+			$tx = "Horz Left"
 		Case 12 ;Hor Hid Right
-			$tx = "HorRightHid"
-		Case 14 ;Hor Hid Left
-			$tx = "HorLeftHid"
-		Case 7 ;tap on
+			$tx = "Horz Hidden"
+		Case 14 ;Hor Hid Left  ;9330 removed
+			$tx = "NOT USED"
+		Case 7 ;Missile on
 			$tx = "Missile On"
-		Case 30 ; tap off
+		Case 30 ; Missile off
 			$tx = "Missile Off"
 		Case 15 ;Ver Block
 			$tx = "Vertical"
@@ -1203,7 +1258,7 @@ Func EditObject($a)
 		Case 8 ;lift
 			$tx = "Lift"
 		Case 9 ;Platform down
-			$tx = "Platform down"
+			$tx = "Ride Down"
 		Case 2
 			$tx = "Diamond"
 		Case 1 ; You
@@ -1212,11 +1267,23 @@ Func EditObject($a)
 			$tx = "Key"
 		Case 17
 			$tx = "Hidden Block"
+		Case 4
+			$tx = "Torch"
+		Case 6
+			$tx = "Water"
+		Case $NULL
+			$tx = "Nothing Selected"
+		Case 254
+			$tx = "White"
 	EndSwitch
+	If $tx = "" Then ;letter or error
+		$tx = "Letter " & Chr($a) & " " & $a
+	EndIf
+
 	Return $tx
 EndFunc   ;==>EditObject
 #CS INFO
-	77157 V4 3/20/2019 8:28:55 PM V3 3/8/2019 8:44:22 AM V2 2/24/2019 6:05:52 PM V1 2/24/2019 12:43:53 AM
+	91040 V6 3/31/2019 4:59:34 PM V5 3/30/2019 6:02:52 PM V4 3/20/2019 8:28:55 PM V3 3/8/2019 8:44:22 AM
 #CE
 
 ;---------------------------------------------------
@@ -1244,10 +1311,10 @@ Func ClearScreen()
 		For $x = 0 To $s_iBoxX - 1
 
 			$Color = "Black.jpg"
-			$g_aMap[$x][$y] = 0
+			$g_aMap[$x][$y] = 0 ;Ed OK
 			If $x = 0 Or $x = $s_iBoxX - 1 Or $y = 0 Or $y = $s_iBoxY - 1 Then
 				$Color = "Edge.jpg"
-				$g_aMap[$x][$y] = -1
+				$g_aMap[$x][$y] = -1 ;Ed OK
 			EndIf
 
 			$vx = $x + $s_iMapOffsetX
@@ -1262,7 +1329,7 @@ Func ClearScreen()
 	SayLoadLevel()
 EndFunc   ;==>ClearScreen
 #CS INFO
-	42638 V3 3/15/2019 8:15:41 PM V2 2/24/2019 6:05:52 PM V1 2/24/2019 12:43:53 AM
+	43402 V4 3/30/2019 6:02:52 PM V3 3/15/2019 8:15:41 PM V2 2/24/2019 6:05:52 PM V1 2/24/2019 12:43:53 AM
 #CE
 
 Func ClearObject($x, $y)
@@ -1286,7 +1353,8 @@ Func StartScreen()
 	Local Static $Action1, $Action2, $Action3, $Action4, $ActionE, $ActionQ
 
 	Local Const $c_iSSwidth = 300
-	Local Const $c_iSSheight = 500
+	;Local Const $c_iSSheight = 500   <<< when done use this
+	Local Const $c_iSSheight = 550
 	Local Const $c_iSSleft = 10
 	Local $iLine, $u_Str1, $u_Str2, $i
 
@@ -1297,9 +1365,11 @@ Func StartScreen()
 		;GUISetState(@SW_SHOW, $g_ScreenStart)
 		$iLine = 10
 
-		$u_Str1 = GUICtrlCreateLabel("Main Menu", 0, $iLine, $c_iSSwidth, 48, $SS_CENTER) ; Height is twice font size
+		;$u_Str1 = GUICtrlCreateLabel("Main Menu", 0, $iLine, $c_iSSwidth, 48, $SS_CENTER) ; Height is twice font size     <<< when done use this
+		$u_Str1 = GUICtrlCreateLabel("This is NOT COMPLETED.", 0, $iLine, $c_iSSwidth, 96, $SS_CENTER) ; Height is twice font size
 		GUICtrlSetFont($u_Str1, 24, 400, 0, "MS Sans Serif")
-		$iLine += 48
+		;$iLine += 48   <<< when done use this
+		$iLine += 48 + 49
 
 		$u_Str2 = GUICtrlCreateLabel("High Scores", $c_iSSleft, $iLine, $c_iSSwidth, 24, $SS_CENTER) ; Height is twice font size
 		GUICtrlSetFont($u_Str2, 12, 400, 0, "MS Sans Serif")
@@ -1393,7 +1463,7 @@ Func StartScreen()
 	Return $g_iSSkey
 EndFunc   ;==>StartScreen
 #CS INFO
-	298214 V7 3/17/2019 2:57:13 AM V6 3/13/2019 1:18:00 AM V5 3/11/2019 2:08:18 AM V4 3/9/2019 11:04:16 PM
+	316193 V8 3/30/2019 6:02:52 PM V7 3/17/2019 2:57:13 AM V6 3/13/2019 1:18:00 AM V5 3/11/2019 2:08:18 AM
 #CE
 
 ;-----------------------------------------
@@ -1412,7 +1482,7 @@ Func GameScreen()
 
 		For $y = 0 To $s_iBoxY - 1
 			For $x = 0 To $s_iBoxX - 1
-				$g_aMap[$x][$y] = -1
+				$g_aMap[$x][$y] = -1 ;Ed OK
 				$g_aDisplayMap[$x][$y] = GUICtrlCreatePic(@ScriptDir & "\Pic\Edge.jpg", $x * $g_Size + $s_iBorder, $y * $g_Size + $s_iBorder, $g_Size, $g_Size)
 			Next
 		Next
@@ -1528,7 +1598,7 @@ Func GameScreen()
 
 EndFunc   ;==>GameScreen
 #CS INFO
-	213673 V13 3/21/2019 4:38:57 PM V12 3/17/2019 2:57:13 AM V11 3/15/2019 8:15:41 PM V10 3/15/2019 1:53:48 AM
+	214055 V14 3/30/2019 6:02:52 PM V13 3/21/2019 4:38:57 PM V12 3/17/2019 2:57:13 AM V11 3/15/2019 8:15:41 PM
 #CE
 
 Func SkipPassCode($Lv)
@@ -1821,7 +1891,7 @@ EndFunc   ;==>Tick
 #CE
 
 Func LoadLevel($Level)
-	Local $a, $x, $y, $sLevel, $hlv
+	Local $a, $x, $y, $sLevel, $hlv, $z
 
 	If $g_fEditDemo Then
 		$g_iLives = 99
@@ -1866,12 +1936,6 @@ Func LoadLevel($Level)
 		GUICtrlSetData($g_cGtitle, $g_GameTitle & " -- " & $x)
 	EndIf
 
-	;Offset
-	;$s_iMapOffsetX = 0 ;Int(($s_iBoxX - $s_iMapSizeX) / 2) - 1
-	;$s_iMapOffsetY = 1 ;Int(($s_iBoxY - $s_iMapSizeY) / 2)
-	;$s_iMapSizeX = 80
-	;$s_iMapSizeY = 20
-
 	For $y = 0 To 49
 		For $x = 0 To 5
 			$g_aObj[$y][$x] = 0
@@ -1880,12 +1944,7 @@ Func LoadLevel($Level)
 
 	For $y = 1 To 20 ;$s_iMapSizeY
 		For $x = 1 To 80 ;$s_iMapSizeX
-			$g_aMap[$x][$y] = 0
-			;	$a = FileRead($hlv, 1)
-			;	$g_aMap[$x][$y] = $a
-			$g_aMap[$x][$y] = Int(FileRead($hlv, 1), 1)
-			;$g_aMap[$x][$y] = FileRead($hlv, 1)
-			;ShowObject($X, $Y, -1)
+			$g_aMap[$x][$y] = Int(FileRead($hlv, 1), 1) ;Game OK
 		Next
 	Next
 	FileClose($hlv)
@@ -1925,30 +1984,27 @@ Func LoadLevel($Level)
 					$g_iTapObj = $g_iObjCnt
 					$g_iObjCnt += 1
 
-				Case 11, 12 ;Hor Letter = always active
-					; $s_HVdir =1
-					$g_aObj[$g_iObjCnt][$s_ObjType] = 3
+				Case 11, 12, 13, 14 ;Hor  = always active
+					; $s_HVdir =1 or -1
 					$g_aObj[$g_iObjCnt][$s_ObjX] = $x
 					$g_aObj[$g_iObjCnt][$s_ObjY] = $y
-					$g_aObj[$g_iObjCnt][$s_HVdir] = 1 ; define picture too
-					If $a = 12 Then
-						$g_aObj[$g_iObjCnt][$s_HidAtc] = True
-					Else
-						$g_aObj[$g_iObjCnt][$s_HidAtc] = False
-					EndIf
-					$g_iObjCnt += 1
 
-				Case 13, 14 ;Hor Letter = always active
-					; $s_HVdir =1
-					$g_aObj[$g_iObjCnt][$s_ObjType] = 4
-					$g_aObj[$g_iObjCnt][$s_ObjX] = $x
-					$g_aObj[$g_iObjCnt][$s_ObjY] = $y
-					$g_aObj[$g_iObjCnt][$s_HVdir] = -1 ; define picture too
-					If $a = 14 Then
+					If $a = 12 Or $a = 14 Then ;9330 change direction to random so 12 and 14 are the same.  Only 12 will be used in editor after this date. 14 need for change in direction.
+						$g_aObj[$g_iObjCnt][$s_ObjType] = 3
 						$g_aObj[$g_iObjCnt][$s_HidAtc] = True
+						$z = Random(0, 1, 1)
+						If $z = 0 Then $z = -1
+						$g_aObj[$g_iObjCnt][$s_HVdir] = $z
 						$g_fHiddenActive = True
-					Else
+					Else ;11 or 13
 						$g_aObj[$g_iObjCnt][$s_HidAtc] = False
+						If $a = 13 Then
+							$g_aObj[$g_iObjCnt][$s_HVdir] = -1 ; define picture too  -1
+							$g_aObj[$g_iObjCnt][$s_ObjType] = 4
+						Else ;11
+							$g_aObj[$g_iObjCnt][$s_HVdir] = 1 ; define picture too 1
+							$g_aObj[$g_iObjCnt][$s_ObjType] = 3
+						EndIf
 					EndIf
 					$g_iObjCnt += 1
 
@@ -1997,7 +2053,7 @@ Func LoadLevel($Level)
 	DisplayStatus(99)
 EndFunc   ;==>LoadLevel
 #CS INFO
-	309324 V9 3/27/2019 9:45:39 PM V8 3/21/2019 4:38:57 PM V7 3/20/2019 8:28:55 PM V6 3/11/2019 6:15:52 PM
+	293355 V10 3/30/2019 6:02:52 PM V9 3/27/2019 9:45:39 PM V8 3/21/2019 4:38:57 PM V7 3/20/2019 8:28:55 PM
 #CE
 
 Func MoveObj()
@@ -2163,17 +2219,17 @@ Func MoveLift($i, $x, $y)
 			$Hit = Collision($g_iYouX, $ColY)
 			If $Hit <> $EMPTY Then
 				$g_iDead = 2
-				;Return
+			Else
+				$g_iYouY = $Ly + 2
+				;$g_aMap[$x][$ly + 1] = 8 ;Lift
+				ShowObject($x, $Ly + 1, 8)
+				;$g_aMap[$g_iYouX][$ly + 2] = 1 ;You
+				ShowObject($g_iYouX, $Ly + 2, $YOU)
+				; ShowBlock()
+				$g_aObj[$i][$s_LiftY] = $Ly + 1
 			EndIf
 
-			$g_iYouY = $Ly + 2
-			;$g_aMap[$x][$ly + 1] = 8 ;Lift
-			ShowObject($x, $Ly + 1, 8)
-			;$g_aMap[$g_iYouX][$ly + 2] = 1 ;You
-			ShowObject($g_iYouX, $Ly + 2, $YOU)
-			; ShowBlock()
-			$g_aObj[$i][$s_LiftY] = $Ly + 1
-		Else
+		Else ;YOU not on top go down
 			If $y = $Ly Then
 				$g_aObj[$i][$s_ObjAct] = 0
 			Else
@@ -2205,7 +2261,7 @@ Func MoveLift($i, $x, $y)
 
 EndFunc   ;==>MoveLift
 #CS INFO
-	82901 V3 3/11/2019 2:08:18 AM V2 2/24/2019 6:05:52 PM V1 2/24/2019 12:43:53 AM
+	84458 V4 3/30/2019 6:02:52 PM V3 3/11/2019 2:08:18 AM V2 2/24/2019 6:05:52 PM V1 2/24/2019 12:43:53 AM
 #CE
 
 Func DoDiamond($x, $y)
@@ -2547,7 +2603,7 @@ Func CheckOtherOne($x, $y, $other)
 			$xx = $g_aObj[$i][$s_ObjX]
 			$yy = $g_aObj[$i][$s_ObjY]
 			Switch $g_aObj[$i][$s_ObjType]
-				Case 3, 4, 5 ;Hor Letter 11
+				Case 3, 4, 5 ;Hor 11
 					If $x = $xx And $y = $yy Then
 						$g_aObj[$i][$s_HVdir] *= -1
 						ExitLoop
@@ -2557,7 +2613,7 @@ Func CheckOtherOne($x, $y, $other)
 	Next
 EndFunc   ;==>CheckOtherOne
 #CS INFO
-	24868 V3 3/8/2019 8:44:22 AM V2 2/24/2019 6:05:52 PM V1 2/24/2019 12:43:53 AM
+	24244 V4 3/30/2019 6:02:52 PM V3 3/8/2019 8:44:22 AM V2 2/24/2019 6:05:52 PM V1 2/24/2019 12:43:53 AM
 #CE
 
 ;Always active
@@ -2637,150 +2693,259 @@ EndFunc   ;==>DoDoor
 	6396 V2 3/11/2019 6:15:52 PM V1 2/24/2019 6:05:52 PM
 #CE
 
+;~~
+Func OneOnlyRemove($a)
+	If $g_fEditMode Then
+		Switch $a
+			Case $YOU
+				$g_fEdYou = False
+				TurnButtonOn($YOU)
+			Case 31
+				$g_fEdMissile = False
+				TurnButtonOn(31)
+			Case 7
+				$g_fEdSwitch = False
+				TurnButtonOn(7)
+			Case 3
+				$g_fEdKey = False
+				TurnButtonOn(3)
+			Case 4
+				$g_fEdTorch = False
+				TurnButtonOn(4)
+		EndSwitch
+	EndIf
+EndFunc   ;==>OneOnlyRemove
+#CS INFO
+	25407 V1 3/31/2019 4:59:34 PM
+#CE
+
+Func TurnButtonOn($a)
+	Local $z
+
+	For $z = 0 To 24
+		If $Which1[$z][1] = $a Then
+			GUICtrlSetData($b[$z], $Which1[$z][0])
+			GUICtrlSetState($b[$z], $GUI_SHOW + $GUI_ENABLE)
+		EndIf
+	Next
+EndFunc   ;==>TurnButtonOn
+#CS INFO
+	14958 V1 3/31/2019 4:59:34 PM
+#CE
+
+Func TurnButtonOff($a)
+	For $z = 0 To 24
+		If $Which1[$z][1] = $a Then
+			GUICtrlSetState($b[$z], $GUI_HIDE)
+			ExitLoop
+		EndIf
+	Next
+EndFunc   ;==>TurnButtonOff
+#CS INFO
+	11381 V1 3/31/2019 4:59:34 PM
+#CE
+
+;~~
+Func CkobjOneOnly($a) ; Run after storing value into map
+	If $g_fEditMode Then
+		Switch $a
+			Case $YOU
+				If $g_fEdYou Then ; This will only occure on Load
+					MsgBox($MB_TOPMOST, "2 or More object - Should have only one", "Should have only one - Remove one!  YOU ")
+				EndIf
+				$g_fEdYou = True
+				$g_iPick = $NULL
+				TurnButtonOff($YOU)
+
+			Case 31
+				If $g_fEdMissile Then
+					MsgBox($MB_TOPMOST, "2 or More object - Should have only one", "Should have only one - Remove one!  MISSILE ")
+				EndIf
+				$g_fEdMissile = True
+				$g_iPick = $NULL
+				TurnButtonOff(31)
+
+			Case 7
+				If $g_fEdSwitch Then
+					MsgBox($MB_TOPMOST, "2 or More object - Should have only one", "Should have only one - Remove one!  SWITCH ")
+				EndIf
+				$g_fEdSwitch = True
+				$g_iPick = $NULL
+				TurnButtonOff(7)
+
+			Case 3
+				If $g_fEdKey Then
+					MsgBox($MB_TOPMOST, "2 or More object - Should have only one", "Should have only one - Remove one!  KEY ")
+				EndIf
+				$g_fEdKey = True
+				$g_iPick = $NULL
+				TurnButtonOff(3)
+
+			Case 4
+				If $g_fEdTorch Then
+					MsgBox($MB_TOPMOST, "2 or More object - Should have only one", "Should have only one - Remove one!  TORCH ")
+				EndIf
+				$g_fEdTorch = True
+				$g_iPick = $NULL
+				TurnButtonOff(4)
+
+		EndSwitch
+
+	EndIf
+EndFunc   ;==>CkobjOneOnly
+#CS INFO
+	87250 V1 3/31/2019 4:59:34 PM
+#CE
+
+;~~
 Func ShowObject($x, $y, $a)
 	Local $Color, $xx, $yy, $e
 	Local $vx, $vy
-
-	If $a >= 0 Then
-		$g_aMap[$x][$y] = $a
-	Else
-		$a = $g_aMap[$x][$y]
-	EndIf
-	$Color = "White.jpg"
-	If $g_fHiddenActive Or $g_fEditMode Then
-		Switch $a
-			Case 12, 14 ;, 16  Vert not user reaction time is to short.
-				; Check if near you location.
-				If $g_fEditMode Then
-					If $a = 12 Then
-						$Color = "HiddenRight.jpg"
+	If $a <> $NULL Then
+		If $a >= 0 Then
+			OneOnlyRemove($g_aMap[$x][$y])
+			$g_aMap[$x][$y] = $a
+			CkobjOneOnly($a)
+		Else
+			$a = $g_aMap[$x][$y]
+		EndIf
+		$Color = "White.jpg"
+		If $g_fHiddenActive Or $g_fEditMode Then
+			Switch $a
+				Case 12, 14 ;, 16  Vert not user reaction time is to short.
+					; Check if near you location.
+					If $g_fEditMode Then
+						If $a = 12 Then
+							$Color = "HiddenRight.jpg"
+						Else
+							$Color = "HiddenLeft.jpg"
+						EndIf
 					Else
-						$Color = "HiddenLeft.jpg"
-					EndIf
-				Else
-					If $g_fHitTorch Then
-						$xx = Abs($x - $g_iYouX)
-						$yy = Abs($y - $g_iYouY)
-						If $xx <= 3 And $yy <= 3 Then
-							$Color = "Hidden.jpg"
+						If $g_fHitTorch Then
+							$xx = Abs($x - $g_iYouX)
+							$yy = Abs($y - $g_iYouY)
+							If $xx <= 3 And $yy <= 3 Then
+								$Color = "Hidden.jpg"
+							Else
+								$Color = "Black.jpg"
+							EndIf
 						Else
 							$Color = "Black.jpg"
 						EndIf
-					Else
-						$Color = "Black.jpg"
+
 					EndIf
-
+			EndSwitch
+		EndIf
+		Switch $a
+			Case 0, 32
+				$Color = "Black.jpg"
+			Case 18
+				If $g_fHitTorch Then
+					$Color = "Hidden.jpg"
+				Else
+					$Color = "Black.jpg"
 				EndIf
+			Case 17
+				If $g_fEditMode Then
+					$Color = "Hidden.jpg"
+				Else
+					$Color = "Black.jpg" ;"Edge.jpg"
+				EndIf
+			Case 5
+				If $g_fKeyUsed Then
+					$Color = "Black.jpg"
+				Else
+					$Color = "Door.jpg"
+				EndIf
+			Case 11 ;Hor Right
+				$Color = "HorLetR.jpg"
+			Case 13 ;Hor Left
+				$Color = "HorLetL.jpg"
+			Case 7 ;tap on
+				$Color = "MissileOn.jpg"
+			Case 30 ; tap off
+				$Color = "MissileOff.jpg"
+			Case 15 ;Ver Block
+				$Color = "VertDown.jpg"
+			Case 16 ;Ver Block
+				$Color = "Vert.jpg"
+			Case 31
+				$Color = "Missile.jpg"
+			Case 128
+				$Color = "blue.jpg"
+			Case 129
+				$Color = "green.jpg"
+			Case 130
+				$Color = "darkblue.jpg"
+			Case 131
+				$Color = "darkestblue.jpg"
+			Case 132
+				$Color = "darkgreen.jpg"
+			Case 133
+				$Color = "darkred.jpg"
+			Case 134
+				$Color = "red.jpg"
+			Case 135
+				$Color = "earth.jpg"
+			Case 136
+				$Color = "lblue.jpg"
+
+			Case 6
+				$Color = "Water.jpg"
+			Case 254
+				$Color = "White.jpg"
+
+			Case 8 ;lift
+				$Color = "lift.jpg"
+			Case 9 ;Platform down
+				$Color = "Tildy.jpg"
+			Case 2
+				$Color = "diamond.jpg"
+			Case 1 ; You
+				$Color = "face.jpg"
+
+			Case 4 ;Torch
+				If $g_fHitTorch Then
+					$Color = "Black.jpg"
+					$g_aMap[$x][$y] = $EMPTY
+				Else
+					$Color = "Torch.jpg"
+				EndIf
+			Case 3
+				If $g_fHitKey Then
+					$Color = "Black.jpg"
+					$g_aMap[$x][$y] = $EMPTY
+				Else
+					$Color = "key.jpg"
+				EndIf
+
+			Case 47
+				$Color = "Slach.jpg"
+			Case 58
+				$Color = "colon.jpg"
+			Case 45
+				$Color = "dash.jpg"
+
+			Case 65 To 90, 48 To 57
+
+				$Color = Chr($a) & ".jpg"
+
 		EndSwitch
-	EndIf
-	Switch $a
-		Case 0, 32
-			$Color = "Black.jpg"
-		Case 18
-			If $g_fHitTorch Then
-				$Color = "Hidden.jpg"
-			Else
-				$Color = "Black.jpg"
+
+		$vx = $x + $s_iMapOffsetX
+		$vy = $s_iMapSizeY - $y + $s_iMapOffsetY
+		If $g_fEditMode Then
+			GUICtrlSetImage($g_aEditMap[$vx][$vy], @ScriptDir & "\pic\" & $Color)
+		Else
+			$e = GUICtrlSetImage($g_aDisplayMap[$vx][$vy], @ScriptDir & "\pic\" & $Color)
+			If $e = 0 Then
+				MsgBox($MB_TOPMOST, "Pic Error", $Color)
 			EndIf
-		Case 17
-			If $g_fEditMode Then
-				$Color = "Hidden.jpg"
-			Else
-				$Color = "Black.jpg" ;"Edge.jpg"
-			EndIf
-		Case 5
-			If $g_fKeyUsed Then
-				$Color = "Black.jpg"
-			Else
-				$Color = "Door.jpg"
-			EndIf
-		Case 11 ;Hor Right
-			$Color = "HorLetR.jpg"
-		Case 13 ;Hor Left
-			$Color = "HorLetL.jpg"
-		Case 7 ;tap on
-			$Color = "MissileOn.jpg"
-		Case 30 ; tap off
-			$Color = "MissileOff.jpg"
-		Case 15 ;Ver Block
-			$Color = "VertDown.jpg"
-		Case 16 ;Ver Block
-			$Color = "Vert.jpg"
-		Case 31
-			$Color = "Missile.jpg"
-		Case 128
-			$Color = "blue.jpg"
-		Case 129
-			$Color = "green.jpg"
-		Case 130
-			$Color = "darkblue.jpg"
-		Case 131
-			$Color = "darkestblue.jpg"
-		Case 132
-			$Color = "darkgreen.jpg"
-		Case 133
-			$Color = "darkred.jpg"
-		Case 134
-			$Color = "red.jpg"
-		Case 135
-			$Color = "earth.jpg"
-		Case 136
-			$Color = "lblue.jpg"
-
-		Case 6
-			$Color = "Water.jpg"
-
-		Case 8 ;lift
-			$Color = "lift.jpg"
-		Case 9 ;Platform down
-			$Color = "Tildy.jpg"
-		Case 2
-			$Color = "diamond.jpg"
-		Case 1 ; You
-			$Color = "face.jpg"
-
-		Case 4 ;Torch
-			If $g_fHitTorch Then
-				$Color = "Black.jpg"
-				$g_aMap[$x][$y] = $EMPTY
-			Else
-				$Color = "Torch.jpg"
-			EndIf
-		Case 3
-			If $g_fHitKey Then
-				$Color = "Black.jpg"
-				$g_aMap[$x][$y] = $EMPTY
-			Else
-				$Color = "key.jpg"
-			EndIf
-
-		Case 47
-			$Color = "Slach.jpg"
-		Case 58
-			$Color = "colon.jpg"
-		Case 45
-			$Color = "dash.jpg"
-
-		Case 65 To 90, 48 To 57
-
-			$Color = Chr($a) & ".jpg"
-
-	EndSwitch
-
-	$vx = $x + $s_iMapOffsetX
-	$vy = $s_iMapSizeY - $y + $s_iMapOffsetY
-	If $g_fEditMode Then
-		GUICtrlSetImage($g_aEditMap[$vx][$vy], @ScriptDir & "\pic\" & $Color)
-
-	Else
-		$e = GUICtrlSetImage($g_aDisplayMap[$vx][$vy], @ScriptDir & "\pic\" & $Color)
-		If $e = 0 Then
-			MsgBox($MB_TOPMOST, "Pic Error", $Color)
 		EndIf
 	EndIf
 EndFunc   ;==>ShowObject
 #CS INFO
-	171044 V10 3/30/2019 12:24:33 AM V9 3/21/2019 4:38:57 PM V8 3/20/2019 8:28:55 PM V7 3/17/2019 2:57:13 AM
+	178889 V11 3/31/2019 4:59:34 PM V10 3/30/2019 12:24:33 AM V9 3/21/2019 4:38:57 PM V8 3/20/2019 8:28:55 PM
 #CE
 
 Func BonusBar()
@@ -2811,4 +2976,4 @@ EndFunc   ;==>Trim
 	4672 V1 3/27/2019 9:45:39 PM
 #CE
 
-;~T !!ScriptMine.exe V0.33 25 Mar 2019 - 3/30/2019 12:24:33 AM
+;~T !!ScriptMine.exe V0.33 25 Mar 2019 - 3/31/2019 4:59:34 PM

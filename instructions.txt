@@ -72,8 +72,11 @@ Can move with arrow key or mouse left click
 To add text press button.  
 
 To add it to the map press space bar or right click. 
+To pick up from map press C or M (NEW)
 
 There a Repeat button, to replace a large number of squares.  Uses the arrors keys to work.  
+
+If you add YOU, Missile, Missile Switch, Key or Torch.  The button will not show. To remove this put something in there place, the buttons will come back.
 
 Quit   no warning if level changed (on to do list)
 
