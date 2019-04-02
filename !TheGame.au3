@@ -6,7 +6,7 @@
 #EndRegion ;**** Directives created by AutoIt3Wrapper_GUI ****
 AutoItSetOption("MustDeclareVars", 1)
 
-Global $g_ver = "0.78 31 Mar 19 Allow One only editor objects"
+Global $g_ver = "0.79 2 Apr 19 Ask to save if changed"
 
 #include <Debug.au3>
 ;_DebugSetup("The Game", True) ; start
@@ -21,6 +21,7 @@ Global $TESTING = True
 	lift instant up not wait to next tick
 	see instruction.txt
 
+	0.79 2 Apr 19 Ask to save if changed
 	0.78 31 Mar 19 Allow One only editor objects
 	0.77 30 Mar 19 Edit: various problems, fix flicker editor
 	0.76c 28 Mar 19 Edit title
@@ -179,15 +180,13 @@ Global $g_ExitGameScreen = False
 ;Game
 Global $g_GameTitle = ""
 Global $g_GameDate = ""
-Global $g_GameChanged = True
+Global $g_GameChanged = False
 Global $g_iBonus = 0
 Global $hDLL = DllOpen("user32.dll")
 
 ;Global Const
 Static Global $s_iBoxX = 82 ;screen size = game size 80x20 + one edge row on each side 2
 Static Global $s_iBoxY = 22
-
-;****************Like to remove both 20Feb2019
 
 Global Static $s_iBorder = 0 ; space between outside edge and edge of map, when added map border
 Global Static $s_iTextBorder = 10 ; space between outside edge and edge of text, when added map border it not needed INI
@@ -271,6 +270,7 @@ Global $g_aHiScore[10][3] ; data load by INI.  10 = 8 date, 1 cnt, 1 update
 Global $g_ScoreStr1 = False
 
 ;Edit Screen
+Global $g_bRepeat
 Global $g_fEdYou = False
 Global $g_fEdMissile = False
 Global $g_fEdSwitch = False
@@ -478,21 +478,6 @@ EndFunc   ;==>Instructions
 	12076 V2 2/24/2019 6:05:52 PM V1 2/24/2019 10:03:19 AM
 #CE
 
-#cs
-	Func KeyInput()
-	$Form1 = GUICreate("KeyInput", 338, 157, 1284, 170)
-	$Label1 = GUICtrlCreateLabel("Input string will start at cursor.", 32, 16, 214, 24)
-	GUICtrlSetFont(-1, 12, 400, 0, "MS Sans Serif")
-	$Label2 = GUICtrlCreateLabel("Display upper case A-Z 0-9 /:-", 32, 56, 214, 24)
-	GUICtrlSetFont(-1, 12, 400, 0, "MS Sans Serif")
-	$Input1 = GUICtrlCreateInput("", 32, 96, 265, 24)
-	GUICtrlSetFont(-1, 10, 400, 0, "MS Sans Serif")
-	GUISetState(@SW_SHOW)
-
-	EndFunc   ;==>KeyInput
-
-#ce
-
 ;~~
 Func EditScreen()
 	;Edit Screen Button
@@ -500,12 +485,14 @@ Func EditScreen()
 	Local $mousePos, $tPoint, $x, $y, $z, $nMsg, $sLetters
 
 	Local Static $Title, $Which[3]
-	Local Static $ls_idDown, $ls_idRight, $ls_idLeft, $ls_idUp, $ls_idSpace, $ls_bQuit, $ls_idPick
-	Local Static $ls_bClear, $ls_bDemo, $ls_bKeyInput, $ls_bLoad, $ls_bRepeat, $ls_bSave
+	Local Static $ls_idDown, $ls_idRight, $ls_idLeft, $ls_idUp, $ls_idSpace, $ls_bQuit, $ls_idPick, $ls_bKeyInput
+
+	;Local Static $ls_bClear, $ls_bDemo, $ls_bLoad, , $ls_bSave
 
 	If $g_fEditDemo = False Then
 		$g_FileName = ""
 	EndIf
+	$g_GameChanged = False
 
 	; $EditLint + (LINE# * $s_iLineSpace)
 	$g_iPick = $EMPTY
@@ -557,7 +544,7 @@ Func EditScreen()
 		GUICtrlSetFont(-1, 12, 800, 0, "Arial Black")
 		GUICtrlSetBkColor(-1, $COLOR_SKYBLUE)
 
-		$ls_bRepeat = GUICtrlCreateButton("Repeat", $iHalf - $iColumn * 2, $g_iEditLine + 30, $iW, 30)
+		$g_bRepeat = GUICtrlCreateButton("Repeat", $iHalf - $iColumn * 2, $g_iEditLine + 30, $iW, 30)
 		$ls_bKeyInput = GUICtrlCreateButton("Add Text", $iHalf - $iColumn * 3, $g_iEditLine + 30, $iW, 30)
 		$ls_bQuit = GUICtrlCreateButton("Quit", $iHalf + $iColumn * 4, $g_iEditLine + 30, $iW, 30)
 
@@ -608,7 +595,7 @@ Func EditScreen()
 		$string &= ",10,Lift,8,11,Ride Down,9,12,Missile Off,7,13,Missile,31,14,Hidden,17"
 		$string &= ",15,Horz Right,11,16,Horz Left,13,18,Hid move,12,17,Vertical,15"
 		SetupWhich($Which1, $string)
-		$string = "0,Load,EdLoadLevel, 2,Save,EdSaveLevel,12,Clear,ClearScreen,15,Demo,StrDemo,4,New,Pause,19,Edit Title,EditLevelTitle"
+		$string = "0,Load,EdEdLoadLevel, 2,Save,EdSaveLevel,12,Clear,EdClearScreen,15,Demo,StrDemo,4,New,Pause,19,Edit Title,EditLevelTitle"
 		SetupWhich($Which2, $string)
 		;_ArrayDisplay($Which0)
 		;_ArrayDisplay($Which1)
@@ -652,7 +639,8 @@ Func EditScreen()
 	Next
 
 	$g_fEdRepeat = False
-	GUICtrlSetBkColor($ls_bRepeat, $COLOR_RED)
+	GUICtrlSetBkColor($g_bRepeat, $COLOR_RED)
+	$g_GameChanged = False
 
 	Local $aAccelKey2[][] = [["{RIGHT}", $ls_idRight], ["{LEFT}", $ls_idLeft], [" ", $ls_idSpace], ["{DOWN}", $ls_idDown], ["{UP}", $ls_idUp], ["c", $ls_idPick], ["m", $ls_idPick]]
 	GUISetAccelerators($aAccelKey2, $g_ScreenEdit)
@@ -838,16 +826,16 @@ Func EditScreen()
 				Case $ls_idPick
 					$g_iPick = $g_aMap[$g_iEdit_Xcur][$g_iEdit_Ycur]
 					EditStatus()
-				Case $ls_bRepeat
+				Case $g_bRepeat
 					If $g_fEdRepeat Then
 						$g_fEdRepeat = False
-						GUICtrlSetBkColor($ls_bRepeat, $COLOR_RED)
+						GUICtrlSetBkColor($g_bRepeat, $COLOR_RED)
 					Else
 						$g_fEdRepeat = True
 						;						$g_aMap[$g_iEdit_Xcur][$g_iEdit_Ycur] = $g_iPick ;ED WRONG
 						ShowObject($g_iEdit_Xcur, $g_iEdit_Ycur, $g_iPick) ;How what under  Cursor
 						$g_GameChanged = True
-						GUICtrlSetBkColor($ls_bRepeat, $COLOR_GREEN)
+						GUICtrlSetBkColor($g_bRepeat, $COLOR_GREEN)
 						EditStatus()
 					EndIf
 
@@ -872,8 +860,9 @@ Func EditScreen()
 					EndIf
 
 				Case $ls_bQuit
-					$g_EdQuit = False
-
+					If CKforLevelChange() Then
+						$g_EdQuit = False
+					EndIf
 			EndSwitch
 		EndIf ;Flag
 
@@ -919,7 +908,25 @@ Func EditScreen()
 
 EndFunc   ;==>EditScreen
 #CS INFO
-	938002 V17 3/31/2019 4:59:34 PM V16 3/30/2019 6:02:52 PM V15 3/30/2019 12:24:33 AM V14 3/28/2019 9:21:27 PM
+	943094 V18 4/2/2019 12:11:02 AM V17 3/31/2019 4:59:34 PM V16 3/30/2019 6:02:52 PM V15 3/30/2019 12:24:33 AM
+#CE
+
+Func CKforLevelChange()
+	Local $iMsgBoxAnswer
+
+	If $g_GameChanged Then
+		$iMsgBoxAnswer = MsgBox(262148, "WARNING  Level changed", "Level has changed!" & @CRLF & "Do you want to Save before going on?")
+		Select
+			Case $iMsgBoxAnswer = 6 ;Yes
+				Return False
+			Case $iMsgBoxAnswer = 7 ;No
+				Return True
+		EndSelect
+	EndIf
+	Return True
+EndFunc   ;==>CKforLevelChange
+#CS INFO
+	27217 V1 4/2/2019 12:11:02 AM
 #CE
 
 Func EditLevelTitle()
@@ -966,11 +973,14 @@ EndFunc   ;==>SetupWhich
 #CE
 
 Func StrDemo()
-	$g_EdQuit = False
-	$g_fEditDemo = True
+	If CKforLevelChange() Then
+
+		$g_EdQuit = False
+		$g_fEditDemo = True
+	EndIf
 EndFunc   ;==>StrDemo
 #CS INFO
-	5765 V1 3/25/2019 9:26:18 PM
+	8429 V2 4/2/2019 12:11:02 AM V1 3/25/2019 9:26:18 PM
 #CE
 
 #cs
@@ -1044,10 +1054,20 @@ Func EdSaveLevel()
 	FileClose($hlv)
 
 	MsgBox($MB_TOPMOST, "Save level", "Level saved to " & $g_FileName, 2)
+	$g_GameChanged = False
 
 EndFunc   ;==>EdSaveLevel
 #CS INFO
-	70102 V5 3/30/2019 12:24:33 AM V4 3/28/2019 9:21:27 PM V3 3/27/2019 9:45:39 PM V2 2/24/2019 6:05:52 PM
+	71948 V6 4/2/2019 12:11:02 AM V5 3/30/2019 12:24:33 AM V4 3/28/2019 9:21:27 PM V3 3/27/2019 9:45:39 PM
+#CE
+
+Func EdEdLoadLevel()
+	If CKforLevelChange() Then
+		EdLoadLevel()
+	EndIf
+EndFunc   ;==>EdEdLoadLevel
+#CS INFO
+	7649 V1 4/2/2019 12:11:02 AM
 #CE
 
 Func EdLoadLevel()
@@ -1057,7 +1077,8 @@ Func EdLoadLevel()
 		If $g_fEditDemo = False Then
 			$FileName = FileOpenDialog("Load Level", @ScriptDir & "\Levels\", "Level (*.lvl)", "", $FD_FILEMUSTEXIST)
 			If @error = 1 Then
-				Return -1
+				$FileName = ""
+				Return
 			EndIf
 		Else
 			$FileName = $g_FileName
@@ -1128,12 +1149,15 @@ Func EdLoadLevel()
 	FileClose($hlv)
 	DisplayTitleDate()
 
+	$g_fEdRepeat = False
+	GUICtrlSetBkColor($g_bRepeat, $COLOR_RED)
+
 	EditStatus()
 	SayLoadLevel()
 
 EndFunc   ;==>EdLoadLevel
 #CS INFO
-	124708 V10 3/31/2019 4:59:34 PM V9 3/30/2019 6:02:52 PM V8 3/28/2019 9:21:27 PM V7 3/27/2019 9:45:39 PM
+	130631 V11 4/2/2019 12:11:02 AM V10 3/31/2019 4:59:34 PM V9 3/30/2019 6:02:52 PM V8 3/28/2019 9:21:27 PM
 #CE
 
 ;Load Level
@@ -1176,7 +1200,7 @@ Func SayLoadLevel($Mode = 0, $Screen = 0, $FileName = "") ;Screen that it going 
 
 EndFunc   ;==>SayLoadLevel
 #CS INFO
-	83691 V3 3/31/2019 4:59:34 PM V2 3/15/2019 8:15:41 PM V1 3/11/2019 2:08:18 AM
+	77551 V4 4/2/2019 12:11:02 AM V3 3/31/2019 4:59:34 PM V2 3/15/2019 8:15:41 PM V1 3/11/2019 2:08:18 AM
 #CE
 
 Func EditStatus()
@@ -1303,6 +1327,20 @@ EndFunc   ;==>DisplayTitleDate
 	23394 V1 3/28/2019 9:21:27 PM
 #CE
 
+Func EdClearScreen()
+	Local $iMsgBoxAnswer
+
+	$iMsgBoxAnswer = MsgBox(262404, "Clear screen WARNING", "The screen will be cleared." & @CRLF & "The filename will be kept." & @CRLF & @CRLF & "Do you want to continue?")
+	If $iMsgBoxAnswer = 6 Then ;Yes
+		If CKforLevelChange() Then
+			ClearScreen()
+		EndIf
+	EndIf
+EndFunc   ;==>EdClearScreen
+#CS INFO
+	24866 V1 4/2/2019 12:11:02 AM
+#CE
+
 Func ClearScreen()
 	Local $Color, $vx, $vy, $x, $y
 
@@ -1326,10 +1364,15 @@ Func ClearScreen()
 			EndIf
 		Next
 	Next
+	$g_fEdRepeat = False
+	GUICtrlSetBkColor($g_bRepeat, $COLOR_RED)
+	$g_GameChanged = False
+
 	SayLoadLevel()
+
 EndFunc   ;==>ClearScreen
 #CS INFO
-	43402 V4 3/30/2019 6:02:52 PM V3 3/15/2019 8:15:41 PM V2 2/24/2019 6:05:52 PM V1 2/24/2019 12:43:53 AM
+	50331 V5 4/2/2019 12:11:02 AM V4 3/30/2019 6:02:52 PM V3 3/15/2019 8:15:41 PM V2 2/24/2019 6:05:52 PM
 #CE
 
 Func ClearObject($x, $y)
@@ -2976,4 +3019,4 @@ EndFunc   ;==>Trim
 	4672 V1 3/27/2019 9:45:39 PM
 #CE
 
-;~T !!ScriptMine.exe V0.33 25 Mar 2019 - 3/31/2019 4:59:34 PM
+;~T !!ScriptMine.exe V0.33 25 Mar 2019 - 4/2/2019 12:11:02 AM
