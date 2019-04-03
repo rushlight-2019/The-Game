@@ -94,12 +94,6 @@ Setup
 
 Game:
 Moving up object you do not die if it moving up.  
-Lift should start the moment You land on it. It waits one tick. ???
 
 Edit:
-Flashy cursor?
- Must save level before test. 
- Save button needs R U Sure box.
-Quit/Load if level dirty then ask to save?
-
 NEW needs a function

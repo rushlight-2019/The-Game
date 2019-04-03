@@ -6,7 +6,7 @@
 #EndRegion ;**** Directives created by AutoIt3Wrapper_GUI ****
 AutoItSetOption("MustDeclareVars", 1)
 
-Global $g_ver = "0.79 2 Apr 19 Ask to save if changed"
+Global $g_ver = "0.81 2 Apr 19 List Level name and date into a text file  LevelList.txt"
 
 #include <Debug.au3>
 ;_DebugSetup("The Game", True) ; start
@@ -18,9 +18,10 @@ Global $TESTING = True
 #cs ----------------------------------------------------------------------------
 	to do int
 
-	lift instant up not wait to next tick
 	see instruction.txt
 
+	0.81 2 Apr 19 List Level name and date into a text file  LevelList.txt
+	0.80 2 Apr 19 Fix Lift
 	0.79 2 Apr 19 Ask to save if changed
 	0.78 31 Mar 19 Allow One only editor objects
 	0.77 30 Mar 19 Edit: various problems, fix flicker editor
@@ -595,7 +596,7 @@ Func EditScreen()
 		$string &= ",10,Lift,8,11,Ride Down,9,12,Missile Off,7,13,Missile,31,14,Hidden,17"
 		$string &= ",15,Horz Right,11,16,Horz Left,13,18,Hid move,12,17,Vertical,15"
 		SetupWhich($Which1, $string)
-		$string = "0,Load,EdEdLoadLevel, 2,Save,EdSaveLevel,12,Clear,EdClearScreen,15,Demo,StrDemo,4,New,Pause,19,Edit Title,EditLevelTitle"
+		$string = "0,Load,EdEdLoadLevel, 11,Save,EdSaveLevel,9,Clear,EdClearScreen,20,Demo,StrDemo,4,New,Pause,19,Edit Title,EditLevelTitle,24,List Levels,ListLevel"
 		SetupWhich($Which2, $string)
 		;_ArrayDisplay($Which0)
 		;_ArrayDisplay($Which1)
@@ -908,7 +909,7 @@ Func EditScreen()
 
 EndFunc   ;==>EditScreen
 #CS INFO
-	943094 V18 4/2/2019 12:11:02 AM V17 3/31/2019 4:59:34 PM V16 3/30/2019 6:02:52 PM V15 3/30/2019 12:24:33 AM
+	945277 V19 4/3/2019 2:19:42 AM V18 4/2/2019 12:11:02 AM V17 3/31/2019 4:59:34 PM V16 3/30/2019 6:02:52 PM
 #CE
 
 Func CKforLevelChange()
@@ -1059,6 +1060,56 @@ Func EdSaveLevel()
 EndFunc   ;==>EdSaveLevel
 #CS INFO
 	71948 V6 4/2/2019 12:11:02 AM V5 3/30/2019 12:24:33 AM V4 3/28/2019 9:21:27 PM V3 3/27/2019 9:45:39 PM
+#CE
+
+Func ListLevel()
+	Local $hlv, $hOut, $x, $y, $a, $FileName, $aPos, $aMyDate, $aMyTime
+
+	$hOut = FileOpen(@ScriptDir & "\ListLevel.txt", $FO_OVERWRITE)
+
+	For $x = 0 To 99
+		If $x < 10 Then
+			$FileName = "Level0" & $x & ".lvl"
+		Else
+			$FileName = "Level" & $x & ".lvl"
+		EndIf
+
+		If FileExists(@ScriptDir & "\Levels\" & $FileName) = 1 Then
+
+			$hlv = FileOpen(@ScriptDir & "\Levels\" & $FileName, $FO_BINARY)
+			If $hlv <> -1 Then
+				FileChangeDir(@ScriptDir)
+
+				$g_GameTitle = ""
+				$a = ""
+				Do
+					$g_GameTitle = $g_GameTitle & BinaryToString($a)
+					$a = FileRead($hlv, 1)
+				Until $a = 127 ;"7F"
+				FileClose($hlv)
+
+				$g_GameDate = StringLeft($g_GameTitle, 6)
+				If StringIsDigit(StringLeft($g_GameDate, 2)) = 1 Then ;all numbers
+					$g_GameTitle = StringMid($g_GameTitle, 7)
+				Else ; Not all numberts
+					$g_GameDate = 0
+				EndIf
+
+				If $g_GameDate = 0 Then
+					FileWriteLine($hOut, $FileName & ": " & $g_GameTitle)
+				Else
+					$a = Trim(StringMid($g_GameDate, 3, 2)) & "/" & Trim(StringMid($g_GameDate, 5, 2)) & "/20" & StringLeft($g_GameDate, 2)
+					FileWriteLine($hOut, $FileName & ": " & $g_GameTitle & " -- " & $a)
+				EndIf
+			EndIf
+		EndIf
+	Next
+
+	FileClose($hOut)
+	MsgBox(0, "List Levels done", "See: " & @ScriptDir & "\ListLevel.txt")
+EndFunc   ;==>ListLevel
+#CS INFO
+	85108 V1 4/3/2019 2:19:42 AM
 #CE
 
 Func EdEdLoadLevel()
@@ -1896,7 +1947,7 @@ Func Game($Level)
 		While $flag
 			$flag = MoveYouDown()
 			If $flag Then
-				Sleep(1)
+				Sleep(1) ;drop
 			EndIf
 		WEnd
 		ShowBlock()
@@ -1907,7 +1958,7 @@ Func Game($Level)
 
 EndFunc   ;==>Game
 #CS INFO
-	133178 V13 3/28/2019 9:21:27 PM V12 3/17/2019 2:57:13 AM V11 3/17/2019 1:23:00 AM V10 3/15/2019 8:15:41 PM
+	133674 V14 4/3/2019 2:19:42 AM V13 3/28/2019 9:21:27 PM V12 3/17/2019 2:57:13 AM V11 3/17/2019 1:23:00 AM
 #CE
 
 Func Tick() ; ave time in 50ms  per loop  + 100ms
@@ -2170,7 +2221,7 @@ Func MoveYou()
 			If $Hit = 0 Then ;OK
 				$g_cMoveEvent = "D" ; You down
 				MoveYouObject($TestX, $TestY)
-				MoveYouUp()
+				;MoveYouUp()
 
 			ElseIf $Hit = 5 Then ;Door
 				DoDoor($TestX, $TestY)
@@ -2185,7 +2236,7 @@ Func MoveYou()
 			If $Hit = 0 Then ;OK
 				$g_cMoveEvent = "D" ; You down
 				MoveYouObject($TestX, $TestY) ; Test is new location.
-				MoveYouUp()
+				;MoveYouUp()
 			ElseIf $Hit = 5 Then ;Door
 				DoDoor($TestX, $TestY)
 			ElseIf $Hit >= 11 And $Hit <= 16 Then
@@ -2212,7 +2263,7 @@ Func MoveYou()
 
 EndFunc   ;==>MoveYou
 #CS INFO
-	70464 V3 3/13/2019 1:18:00 AM V2 2/24/2019 6:05:52 PM V1 2/24/2019 12:43:53 AM
+	70582 V4 4/3/2019 2:19:42 AM V3 3/13/2019 1:18:00 AM V2 2/24/2019 6:05:52 PM V1 2/24/2019 12:43:53 AM
 #CE
 
 Func MoveYouDown()
@@ -2229,27 +2280,38 @@ Func MoveYouDown()
 		Switch $Hit
 			Case 6 ; Water
 				$g_iDead = 1
+				;Case 8 ;Lift
+
 		EndSwitch
 	EndIf
-	; ShowBlock()
+
 	Return False
 EndFunc   ;==>MoveYouDown
 #CS INFO
-	23924 V2 2/24/2019 6:05:52 PM V1 2/24/2019 12:43:53 AM
+	23829 V3 4/3/2019 2:19:42 AM V2 2/24/2019 6:05:52 PM V1 2/24/2019 12:43:53 AM
 #CE
 
-;Ride Lift up  - Return True - False=You died
-Func MoveYouUp()
-	Sleep(20)
-EndFunc   ;==>MoveYouUp
-#CS INFO
-	3921 V1 2/24/2019 6:05:52 PM
+#cs
+	;Ride Lift up  - Return True - False=You died
+	Func MoveYouUp()
+	;Sleep(20)
+
+	EndFunc   ;==>MoveYouUp
+	removed 4/2/2019	3921 V1 2/24/2019 6:05:52 PM
 #CE
 
 Func MoveLift($i, $x, $y)
 	Local $Ly, $ColY, $Hit
 
+	If $g_aObj[$i][$s_ObjAct] = 0 Then
+		If $g_aMap[$x][$y + 1] == $YOU Then ;Look for You
+			$g_aObj[$i][$s_ObjAct] = 1 ; Found You turn lift on
+			$g_aObj[$i][$s_LiftY] = $y
+		EndIf
+	EndIf
+
 	$Ly = $g_aObj[$i][$s_LiftY]
+
 	If $g_aObj[$i][$s_ObjAct] = 1 Then
 
 		If $g_aMap[$x][$Ly + 1] = $YOU Then ;Look for You
@@ -2282,29 +2344,11 @@ Func MoveLift($i, $x, $y)
 				$g_aObj[$i][$s_LiftY] = $Ly - 1
 			EndIf
 		EndIf
-
-		;Check you on lift  YES go up, NO go down
-		; YES
-		; ME move up one
-		;	Check for Collision.
-		; Lift color replace you
-
-		;No
-		; Lift clear at current location
-		; Change current location down one
-		; if new location at org location disactivate.
-
-	Else
-		If $g_aMap[$x][$y + 1] == $YOU Then ;Look for You
-			$g_aObj[$i][$s_ObjAct] = 1 ; Found You turn lift on
-			$g_aObj[$i][$s_LiftY] = $y
-
-		EndIf
 	EndIf
 
 EndFunc   ;==>MoveLift
 #CS INFO
-	84458 V4 3/30/2019 6:02:52 PM V3 3/11/2019 2:08:18 AM V2 2/24/2019 6:05:52 PM V1 2/24/2019 12:43:53 AM
+	68467 V5 4/3/2019 2:19:42 AM V4 3/30/2019 6:02:52 PM V3 3/11/2019 2:08:18 AM V2 2/24/2019 6:05:52 PM
 #CE
 
 Func DoDiamond($x, $y)
@@ -3019,4 +3063,4 @@ EndFunc   ;==>Trim
 	4672 V1 3/27/2019 9:45:39 PM
 #CE
 
-;~T !!ScriptMine.exe V0.33 25 Mar 2019 - 4/2/2019 12:11:02 AM
+;~T !!ScriptMine.exe V0.33 25 Mar 2019 - 4/3/2019 2:19:42 AM
