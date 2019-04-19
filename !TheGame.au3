@@ -17,6 +17,9 @@ Global $TESTING = True
 
 #cs ----------------------------------------------------------------------------
 	to do int
+Program created by Phillip Forrestal 2018-2019
+GNU GENERAL PUBLIC LICENSE
+                       Version 3, 29 June 2007
 
 	see instruction.txt
 	Back up level when changed.  Keep  3 edits  Setting
