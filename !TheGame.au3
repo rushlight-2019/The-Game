@@ -6,7 +6,7 @@
 #EndRegion ;**** Directives created by AutoIt3Wrapper_GUI ****
 AutoItSetOption("MustDeclareVars", 1)
 
-Global $ver = "0.82 18 Apr 19 Editor New"
+Global $ver = "0.82a 18 Apr 19 Editor New"
 
 #include <Debug.au3>
 ;_DebugSetup("The Game", True) ; start
@@ -17,14 +17,14 @@ Global $TESTING = True
 
 #cs ----------------------------------------------------------------------------
 	to do int
-Program created by Phillip Forrestal 2018-2019
-GNU GENERAL PUBLIC LICENSE
-                       Version 3, 29 June 2007
+	Program created and copyrighted  by Phillip Forrestal 2018-2019
+	GNU GENERAL PUBLIC LICENSE
+	Version 3, 29 June 2007
 
 	see instruction.txt
 	Back up level when changed.  Keep  3 edits  Setting
 
-	0.83 18 Apr 19 Clear will not clear Object there before
+	0.83 18 Apr 19 Back up level when changed.  Keep  3 edits
 	0.82 18 Apr 19 Editor New
 	0.81 2 Apr 19 List Level name and date into a text file  LevelList.txt
 	0.80 2 Apr 19 Fix Lift
@@ -1473,6 +1473,12 @@ Func ClearScreen()
 		Next
 	Next
 	$g_fEdRepeat = False
+	$g_fEdYou = False ; $YOU 1
+	$g_fEdMissile = False ; 31
+	$g_fEdSwitch = False ;7
+	$g_fEdKey = False ;3
+	$g_fEdTorch = False ;4
+
 	GUICtrlSetBkColor($g_bRepeat, $COLOR_RED)
 	$g_GameChanged = False
 
@@ -1480,7 +1486,7 @@ Func ClearScreen()
 
 EndFunc   ;==>ClearScreen
 #CS INFO
-	50331 V5 4/2/2019 12:11:02 AM V4 3/30/2019 6:02:52 PM V3 3/15/2019 8:15:41 PM V2 2/24/2019 6:05:52 PM
+	58985 V6 4/19/2019 12:33:28 AM V5 4/2/2019 12:11:02 AM V4 3/30/2019 6:02:52 PM V3 3/15/2019 8:15:41 PM
 #CE
 
 Func ClearObject($x, $y)
@@ -3120,4 +3126,4 @@ EndFunc   ;==>Trim
 	4672 V1 3/27/2019 9:45:39 PM
 #CE
 
-;~T ScriptFunc.exe V0.53 17 Apr 2019 - 4/18/2019 6:59:38 PM
+;~T ScriptFunc.exe V0.53 17 Apr 2019 - 4/19/2019 12:33:28 AM
