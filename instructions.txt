@@ -78,7 +78,9 @@ There a Repeat button, to replace a large number of squares.  Uses the arrors ke
 
 If you add YOU, Missile, Missile Switch, Key or Torch.  The button will not show. To remove this put something in there place, the buttons will come back.
 
-Quit   no warning if level changed (on to do list)
+Quit  Will warn if level been changed
+
+New - Will find first level number not used, if NO then if will find next.
 
 Test Level - Will NOT automatical save the level. (on the to do list)
 	It will run the game for 'Edit level' only.  Endless retries.
@@ -96,4 +98,5 @@ Game:
 Moving up object you do not die if it moving up.  
 
 Edit:
-NEW needs a function
+Clear does not clear objects should be easy fix.
+Need to backup old went new is saved.  Way to load backups.

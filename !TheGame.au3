@@ -6,12 +6,12 @@
 #EndRegion ;**** Directives created by AutoIt3Wrapper_GUI ****
 AutoItSetOption("MustDeclareVars", 1)
 
-Global $g_ver = "0.81 2 Apr 19 List Level name and date into a text file  LevelList.txt"
+Global $ver = "0.82 18 Apr 19 Editor New"
 
 #include <Debug.au3>
 ;_DebugSetup("The Game", True) ; start
 
-;_DebugOut($g_ver)
+;_DebugOut($ver)
 Global $_debug = @error = 0
 Global $TESTING = True
 
@@ -19,7 +19,10 @@ Global $TESTING = True
 	to do int
 
 	see instruction.txt
+	Back up level when changed.  Keep  3 edits  Setting
 
+	0.83 18 Apr 19 Clear will not clear Object there before
+	0.82 18 Apr 19 Editor New
 	0.81 2 Apr 19 List Level name and date into a text file  LevelList.txt
 	0.80 2 Apr 19 Fix Lift
 	0.79 2 Apr 19 Ask to save if changed
@@ -511,7 +514,7 @@ Func EditScreen()
 	$g_iYouY = 0
 
 	If $g_ScreenEdit = 0 Then
-		$g_ScreenEdit = GUICreate("The Game - Edit screen - " & $g_ver, $s_iLineX, $g_iEditLine + 320, -1, -1)
+		$g_ScreenEdit = GUICreate("The Game - Edit screen - " & $ver, $s_iLineX, $g_iEditLine + 320, -1, -1)
 		GUISetState(@SW_SHOW, $g_ScreenEdit)
 
 		For $y = 0 To $s_iBoxY - 1
@@ -596,7 +599,7 @@ Func EditScreen()
 		$string &= ",10,Lift,8,11,Ride Down,9,12,Missile Off,7,13,Missile,31,14,Hidden,17"
 		$string &= ",15,Horz Right,11,16,Horz Left,13,18,Hid move,12,17,Vertical,15"
 		SetupWhich($Which1, $string)
-		$string = "0,Load,EdEdLoadLevel, 11,Save,EdSaveLevel,9,Clear,EdClearScreen,20,Demo,StrDemo,4,New,Pause,19,Edit Title,EditLevelTitle,24,List Levels,ListLevel"
+		$string = "0,Load,EdEdLoadLevel, 11,Save,EdSaveLevel,9,Clear,EdClearScreen,20,Demo,StrDemo,4,New,NewLevel,19,Edit Title,EditLevelTitle,24,List Levels,ListLevel"
 		SetupWhich($Which2, $string)
 		;_ArrayDisplay($Which0)
 		;_ArrayDisplay($Which1)
@@ -909,7 +912,52 @@ Func EditScreen()
 
 EndFunc   ;==>EditScreen
 #CS INFO
-	945277 V19 4/3/2019 2:19:42 AM V18 4/2/2019 12:11:02 AM V17 3/31/2019 4:59:34 PM V16 3/30/2019 6:02:52 PM
+	945371 V20 4/18/2019 4:49:42 PM V19 4/3/2019 2:19:42 AM V18 4/2/2019 12:11:02 AM V17 3/31/2019 4:59:34 PM
+#CE
+
+Func NewLevel()
+	; 1. Find Next unused  level name
+	;	@workingdir
+	Local $sLevelPath, $aLevels, $s
+	Local $iMsgBoxAnswer
+
+	Local $flag = False
+
+	$sLevelPath = @WorkingDir & "\levels\"
+	Local $aLevels = _FileListToArray($sLevelPath, "*.lvl", $FLTA_FILES)
+	For $z = 1 To $aLevels[0]
+		If $z < 10 Then
+			$s = "0" & String($z - 1)
+		Else
+			$s = String($z - 1)
+		EndIf
+
+		If $aLevels[$z] <> "Level" & $s & ".lvl" Then
+			$iMsgBoxAnswer = MsgBox(262147, "Change Level name", "Level" & $s & ".lvl" & @CRLF & "Do you want to change the current level to this name?")
+			Select
+				Case $iMsgBoxAnswer = 6 ;Yes
+					;$g_FileName   ; Need full path
+					$g_FileName = @WorkingDir & "\levels\" & "Level" & $s & ".lvl"
+					$flag = True
+					ExitLoop
+				Case $iMsgBoxAnswer = 7 ;No
+					;Loop to next free level
+				Case $iMsgBoxAnswer = 2 ;Cancel
+					ExitLoop
+			EndSelect
+		EndIf
+	Next
+
+	If $flag Then
+		If $g_GameTitle = "" Then
+			$g_GameTitle = "Created on " & _NowDate()
+		EndIf
+		DisplayTitleDate()
+	EndIf
+
+EndFunc   ;==>NewLevel
+#CS INFO
+	69725 V2 4/18/2019 6:59:38 PM V1 4/18/2019 4:49:42 PM
 #CE
 
 Func CKforLevelChange()
@@ -1024,7 +1072,6 @@ Func EdSaveLevel()
 		MsgBox($MB_TOPMOST, "Save lever, filename not set", "No filename, on to do list")
 		Return 0
 	EndIf
-
 	$hlv = FileOpen($g_FileName, $FO_OVERWRITE)
 	If $hlv = -1 Then
 		MsgBox(1, "Level error", $g_FileName & " Level did not save.")
@@ -1365,17 +1412,24 @@ EndFunc   ;==>EditObject
 ;Both Edit and Game
 
 Func DisplayTitleDate()
-	Local $x
+	Local $x, $s
+	Local $sDrive = "", $sDir = "", $sFileName = "", $sExtension = ""
+
+	$s = "No level name"
+	If $g_FileName <> "" Then
+		_PathSplit($g_FileName, $sDrive, $sDir, $sFileName, $sExtension)
+		$s = $sFileName & $sExtension & ": " & $g_GameTitle
+	EndIf
 
 	If $g_GameDate = 0 Then
-		GUICtrlSetData($g_EdTitle, $g_GameTitle)
+		GUICtrlSetData($g_EdTitle, $s)
 	Else
 		$x = Trim(StringMid($g_GameDate, 3, 2)) & "/" & Trim(StringMid($g_GameDate, 5, 2)) & "/20" & StringLeft($g_GameDate, 2)
-		GUICtrlSetData($g_EdTitle, $g_GameTitle & " -- " & $x)
+		GUICtrlSetData($g_EdTitle, $s & " -- " & $x)
 	EndIf
 EndFunc   ;==>DisplayTitleDate
 #CS INFO
-	23394 V1 3/28/2019 9:21:27 PM
+	38549 V2 4/18/2019 4:49:42 PM V1 3/28/2019 9:21:27 PM
 #CE
 
 Func EdClearScreen()
@@ -1454,7 +1508,7 @@ Func StartScreen()
 
 	If $g_ScreenStart = 0 Then
 
-		$g_ScreenStart = GUICreate("The Game - " & $g_ver, $c_iSSwidth, $c_iSSheight, -1, -1)
+		$g_ScreenStart = GUICreate("The Game - " & $ver, $c_iSSwidth, $c_iSSheight, -1, -1)
 		;	GUISetState(@SW_HIDE, $g_ScreenStart)
 		;GUISetState(@SW_SHOW, $g_ScreenStart)
 		$iLine = 10
@@ -1557,7 +1611,7 @@ Func StartScreen()
 	Return $g_iSSkey
 EndFunc   ;==>StartScreen
 #CS INFO
-	316193 V8 3/30/2019 6:02:52 PM V7 3/17/2019 2:57:13 AM V6 3/13/2019 1:18:00 AM V5 3/11/2019 2:08:18 AM
+	315995 V9 4/18/2019 4:49:42 PM V8 3/30/2019 6:02:52 PM V7 3/17/2019 2:57:13 AM V6 3/13/2019 1:18:00 AM
 #CE
 
 ;-----------------------------------------
@@ -1568,7 +1622,7 @@ Func GameScreen()
 
 	If $g_ScreenGame = 0 Then
 
-		$g_ScreenGame = GUICreate("The Game - " & $g_ver, $g_Size * $s_iBoxX + $s_iBorder * 2, $g_Size * $s_iBoxY + $s_iBorder * 2 + $s_iLines * $s_iLineSpace + $g_Top, -1, -1)
+		$g_ScreenGame = GUICreate("The Game - " & $ver, $g_Size * $s_iBoxX + $s_iBorder * 2, $g_Size * $s_iBoxY + $s_iBorder * 2 + $s_iLines * $s_iLineSpace + $g_Top, -1, -1)
 		GUISetState(@SW_SHOW, $g_ScreenGame)
 		;GUISetState(@SW_HIDE, $g_ScreenGame)
 
@@ -1582,7 +1636,7 @@ Func GameScreen()
 		Next
 
 		;Display Static lines
-		GUICtrlCreateLabel($g_ver & "   ", $s_iTextBorder, $s_iLineTop + (($s_iLineSpace * 6) - 8) + ($s_iLineSpace / 4), $s_iLineX - 10, 24, $SS_RIGHT) ; Height is twice font size
+		GUICtrlCreateLabel($ver & "   ", $s_iTextBorder, $s_iLineTop + (($s_iLineSpace * 6) - 8) + ($s_iLineSpace / 4), $s_iLineX - 10, 24, $SS_RIGHT) ; Height is twice font size
 		GUICtrlSetFont(-1, 6, 400, 0, "MS Sans Serif")
 
 		$g_cGquit = GUICtrlCreateLabel('To exist the game tap "C"', $s_iTextBorder, $s_iLineTop + $s_iLineSpace * 5, $s_iLineX / 4, 24) ; Height is twice font size
@@ -1692,7 +1746,7 @@ Func GameScreen()
 
 EndFunc   ;==>GameScreen
 #CS INFO
-	214055 V14 3/30/2019 6:02:52 PM V13 3/21/2019 4:38:57 PM V12 3/17/2019 2:57:13 AM V11 3/15/2019 8:15:41 PM
+	213659 V15 4/18/2019 4:49:42 PM V14 3/30/2019 6:02:52 PM V13 3/21/2019 4:38:57 PM V12 3/17/2019 2:57:13 AM
 #CE
 
 Func SkipPassCode($Lv)
@@ -3063,4 +3117,4 @@ EndFunc   ;==>Trim
 	4672 V1 3/27/2019 9:45:39 PM
 #CE
 
-;~T !!ScriptMine.exe V0.33 25 Mar 2019 - 4/3/2019 2:19:42 AM
+;~T ScriptFunc.exe V0.53 17 Apr 2019 - 4/18/2019 6:59:38 PM
