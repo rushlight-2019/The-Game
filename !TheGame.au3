@@ -6,25 +6,23 @@
 #EndRegion ;**** Directives created by AutoIt3Wrapper_GUI ****
 AutoItSetOption("MustDeclareVars", 1)
 
-Global $ver = "0.82a 18 Apr 19 Editor New"
+Global $ver = "0.83 22 Apr 19 Back up level when saved"
 
-#include <Debug.au3>
-;_DebugSetup("The Game", True) ; start
-
-;_DebugOut($ver)
-Global $_debug = @error = 0
+Global $_debug = False
 Global $TESTING = True
 
 #cs ----------------------------------------------------------------------------
-	to do int
+
 	Program created and copyrighted  by Phillip Forrestal 2018-2019
 	GNU GENERAL PUBLIC LICENSE
 	Version 3, 29 June 2007
 
 	see instruction.txt
-	Back up level when changed.  Keep  3 edits  Setting
+	Setting  Screen size
+	End of game by doing random levels.   Hiscore show random level done count
 
-	0.83 18 Apr 19 Back up level when changed.  Keep  3 edits
+	Working on Setting too.
+	0.83 22 Apr 19 Back up level when saved.  Keep  2 days of edit.
 	0.82 18 Apr 19 Editor New
 	0.81 2 Apr 19 List Level name and date into a text file  LevelList.txt
 	0.80 2 Apr 19 Fix Lift
@@ -277,6 +275,7 @@ Global $g_aHiScore[10][3] ; data load by INI.  10 = 8 date, 1 cnt, 1 update
 Global $g_ScoreStr1 = False
 
 ;Edit Screen
+Global $g_iBakdays
 Global $g_bRepeat
 Global $g_fEdYou = False
 Global $g_fEdMissile = False
@@ -345,7 +344,7 @@ EndFunc   ;==>Pause
 
 ;----------------------------------- End of Global
 Func Main()
-	Local $i
+	Local $i, $y
 	Local $fOkProgram = True
 
 	ReadIni()
@@ -368,9 +367,18 @@ Func Main()
 				Instructions()
 
 			Case 4
-				MsgBox($MB_TOPMOST, "", "Function " & $i & " not active")
+				Settings()
+
+				;@ScriptFullPath
+				;	If @Compiled Then
+				;		Run(@ScriptFullPath)
+				;	Else
+				;;		Pause("Compile it would restart the program")
+				;	EndIf
+				;	Exit
 
 			Case 5
+				BackupClear()
 				EditScreen()
 				If $g_fEditDemo Then
 					GameScreen()
@@ -385,7 +393,53 @@ Func Main()
 	EndIf
 EndFunc   ;==>Main
 #CS INFO
-	32475 V5 3/30/2019 6:02:52 PM V4 3/28/2019 9:21:27 PM V3 3/25/2019 12:04:08 AM V2 2/24/2019 6:05:52 PM
+	41497 V6 4/22/2019 9:01:33 AM V5 3/30/2019 6:02:52 PM V4 3/28/2019 9:21:27 PM V3 3/25/2019 12:04:08 AM
+#CE
+
+Func Settings()
+	Local $Setting, $y
+
+	$Setting = GUICreate("Change Setting", 615, 125, 577, 345)
+	GUICtrlCreateLabel("Settings ", 296, 8, 75, 28)
+	GUICtrlSetFont(-1, 14, 400, 0, "MS Sans Serif")
+	Local $ScreenSize = GUICtrlCreateButton("Screen Size", 32, 48, 153, 41)
+	Local $BackupDays = GUICtrlCreateButton("Backup days", 248, 48, 129, 41)
+	Local $Button3 = GUICtrlCreateButton("Button3", 432, 40, 145, 49)
+	GUISetState(@SW_SHOW)
+
+	While 1
+
+		Local $nMsg = GUIGetMsg()
+		Switch $nMsg
+			Case $GUI_EVENT_CLOSE
+				GUIDelete($Setting)
+				ExitLoop
+			Case $ScreenSize
+			Case $BackupDays
+				$y = InputBox("Days to keep backup of  Edited levels.", "Days, 1 to 10, to keep backup of saved edit levels." & @CRLF & "Default = 2" & @CRLF & "Files are 2k in size.", $g_iBakdays)
+				Select
+					Case @error = 0 ;OK - The string returned is valid
+						$g_iBakdays = Int($y)
+						If $g_iBakdays < 1 Then
+							$g_iBakdays = 1
+						ElseIf $g_iBakdays > 10 Then
+							$g_iBakdays = 10
+						EndIf
+
+						IniWrite($g_cSetting, "General", "BackupDays", $g_iBakdays)
+						ExitLoop
+					Case Else ;The Cancel button was pushed  The InputBox failed to open
+						ExitLoop
+
+				EndSelect
+
+		EndSwitch
+	WEnd
+
+	GUIDelete($Setting)
+EndFunc   ;==>Settings
+#CS INFO
+	84560 V1 4/22/2019 9:01:33 AM
 #CE
 
 ;INI Section Score  ScoreWho
@@ -412,6 +466,8 @@ Func ReadIni()
 	Local $i
 	Local $a, $c ; temp array or not
 
+	$g_iBakdays = Int(IniRead($g_cSetting, "General", "BackupDays", 2))
+
 	$a = IniReadSection($g_cSetting, "HighScore")
 	If @error = 0 Then
 		For $i = 1 To 8
@@ -436,8 +492,8 @@ Func ReadIni()
 	;SizeCell  default 20
 	$g_Size = Int(IniRead($g_cSetting, "General", "SizeCell", 0))
 	If $g_Size = 0 Then
-		IniWrite($g_cSetting, "General", "SizeCell", 20)
-		$g_Size = 20
+		IniWrite($g_cSetting, "General", "SizeCell", 15)
+		$g_Size = 15
 	EndIf
 	;Global $s_iHalfway = (($g_Size * $s_iBoxX) + $s_iTextBorder) / 2 ;used for game lines so left side in not overwriten
 	;Global $s_iLineX = $g_Size * $s_iBoxX
@@ -446,7 +502,7 @@ Func ReadIni()
 
 EndFunc   ;==>ReadIni
 #CS INFO
-	71926 V5 3/30/2019 12:24:33 AM V4 3/17/2019 2:57:13 AM V3 3/8/2019 8:44:22 AM V2 2/25/2019 1:58:55 AM
+	77252 V6 4/22/2019 9:01:33 AM V5 3/30/2019 12:24:33 AM V4 3/17/2019 2:57:13 AM V3 3/8/2019 8:44:22 AM
 #CE
 
 Func SaveHiScore()
@@ -479,7 +535,6 @@ EndFunc   ;==>DoDemoLevel
 Func Instructions()
 	Local $_Run = "notepad.exe " & @ScriptDir & "\instructions.txt"
 	Run($_Run, @WindowsDir, @SW_MAXIMIZE)
-
 EndFunc   ;==>Instructions
 #CS INFO
 	12076 V2 2/24/2019 6:05:52 PM V1 2/24/2019 10:03:19 AM
@@ -598,11 +653,11 @@ Func EditScreen()
 		; all use the same function so string the Color value for the function
 		SetupWhich($Which0, $string)
 
-		$string = "0,Empty,0,22,You,1,4,Diamond,2,5,Water,6,7,Key,3,9,Torch,4,8,Door,5,1,Blue,128,2,Red,134,3,Green,129"
+		$string = "0,Empty,0,22,You,1,4,Diamond,2,5,Water,6,7,Key,3,9,Torch,4,8,Door,5" ;,1,Blue,128,2,Red,134,3,Green,129"
 		$string &= ",10,Lift,8,11,Ride Down,9,12,Missile Off,7,13,Missile,31,14,Hidden,17"
 		$string &= ",15,Horz Right,11,16,Horz Left,13,18,Hid move,12,17,Vertical,15"
 		SetupWhich($Which1, $string)
-		$string = "0,Load,EdEdLoadLevel, 11,Save,EdSaveLevel,9,Clear,EdClearScreen,20,Demo,StrDemo,4,New,NewLevel,19,Edit Title,EditLevelTitle,24,List Levels,ListLevel"
+		$string = "0,Load,EdEdLoadLevel, 11,Save,EdSaveLevel,9,Clear,EdClearScreen,20,Demo,StrDemo,4,New,NewLevel,19,Edit Title,EditLevelTitle,24,List Levels,ListLevel,23,Load Backup,EdLoadBak"
 		SetupWhich($Which2, $string)
 		;_ArrayDisplay($Which0)
 		;_ArrayDisplay($Which1)
@@ -625,6 +680,7 @@ Func EditScreen()
 		$g_fEditDemo = False
 	Else
 		ClearScreen()
+		ClearTitle()
 	EndIf
 
 	$g_iDirection = 0
@@ -915,7 +971,7 @@ Func EditScreen()
 
 EndFunc   ;==>EditScreen
 #CS INFO
-	945371 V20 4/18/2019 4:49:42 PM V19 4/3/2019 2:19:42 AM V18 4/2/2019 12:11:02 AM V17 3/31/2019 4:59:34 PM
+	948584 V21 4/22/2019 9:01:33 AM V20 4/18/2019 4:49:42 PM V19 4/3/2019 2:19:42 AM V18 4/2/2019 12:11:02 AM
 #CE
 
 Func NewLevel()
@@ -923,7 +979,6 @@ Func NewLevel()
 	;	@workingdir
 	Local $sLevelPath, $aLevels, $s
 	Local $iMsgBoxAnswer
-
 	Local $flag = False
 
 	$sLevelPath = @WorkingDir & "\levels\"
@@ -946,6 +1001,7 @@ Func NewLevel()
 				Case $iMsgBoxAnswer = 7 ;No
 					;Loop to next free level
 				Case $iMsgBoxAnswer = 2 ;Cancel
+					$flag = False
 					ExitLoop
 			EndSelect
 		EndIf
@@ -960,7 +1016,7 @@ Func NewLevel()
 
 EndFunc   ;==>NewLevel
 #CS INFO
-	69725 V2 4/18/2019 6:59:38 PM V1 4/18/2019 4:49:42 PM
+	70723 V3 4/22/2019 9:01:33 AM V2 4/18/2019 6:59:38 PM V1 4/18/2019 4:49:42 PM
 #CE
 
 Func CKforLevelChange()
@@ -1068,20 +1124,65 @@ EndFunc   ;==>StrDemo
 	EndFunc   ;==>ExpandLevel
 #ce
 
+;			Keep  2 days of edit.  Then the last one per day up  to 30 days.
+;           Backup format:  LevelXX YYMMDD-hrmnss.lvl
+Func BackupSave() ; from ScriptBackup.au3
+	Local $s, $sDrive = "", $sDir = "", $sFileName = "", $sExtension = ""
+
+	_PathSplit($g_FileName, $sDrive, $sDir, $sFileName, $sExtension)
+	$s = $sFileName & "-" & @YEAR & "-" & @MON & "-" & @MDAY & "-" & @HOUR & "-" & @MIN & "-" & @SEC & $sExtension
+
+	FileCopy($g_FileName, @WorkingDir & "\Levels\Bak\" & $s, $FC_OVERWRITE + $FC_CREATEPATH)
+	;problem FileCopy does not change modified date.  Do delete days may delete after 0 days.
+	FileSetTime(@WorkingDir & "\Levels\Bak\" & $s, "") ; Set modified date to current time
+EndFunc   ;==>BackupSave
+#CS INFO
+	41606 V1 4/22/2019 9:01:33 AM
+#CE
+
+Func BackupClear() ;		from ScriptBackup.au3
+	Local $aFile, $s, $diff, $f
+
+	If $g_iBakdays < 1 Then ; 	must keep backups.  Default is 2
+		$g_iBakdays = 1
+	EndIf
+
+	$aFile = _FileListToArray(@WorkingDir & "\Levels\Bak\", "*.lvl", $FLTA_FILES)
+	If @error = 0 Then ; files found
+
+		For $x = 1 To $aFile[0]
+			$f = @WorkingDir & "\Levels\Bak\" & $aFile[$x]
+			$s = FileGetTime($f, $FT_MODIFIED, $FT_ARRAY) ;RETURNS ARRAY
+			$diff = _DateDiff("D", $s[0] & "/" & $s[1] & "/" & $s[2] & " " & $s[3] & ":" & $s[4] & ":" & $s[5], _NowCalc()) ; difference to the second.
+			If $diff > $g_iBakdays Then
+				FileDelete($f)
+				;				@error
+			EndIf
+		Next
+	EndIf
+EndFunc   ;==>BackupClear
+#CS INFO
+	44422 V1 4/22/2019 9:01:33 AM
+#CE
+
+;~~
 Func EdSaveLevel()
 	Local $e, $hlv, $x, $y, $aMyDate, $aMyTime
 
 	If $g_FileName = "" Then
-		MsgBox($MB_TOPMOST, "Save lever, filename not set", "No filename, on to do list")
+		MsgBox($MB_TOPMOST, "Save lever", "Filename not set, Load a level")
 		Return 0
 	EndIf
+
+	FileChangeDir(@ScriptDir)
+
+	BackupSave()
+
 	$hlv = FileOpen($g_FileName, $FO_OVERWRITE)
 	If $hlv = -1 Then
 		MsgBox(1, "Level error", $g_FileName & " Level did not save.")
 		Return 0
 	EndIf
-
-	FileChangeDir(@ScriptDir)
 
 	If $g_GameChanged Then
 		; Write today's date as YYMMDD
@@ -1109,7 +1210,7 @@ Func EdSaveLevel()
 
 EndFunc   ;==>EdSaveLevel
 #CS INFO
-	71948 V6 4/2/2019 12:11:02 AM V5 3/30/2019 12:24:33 AM V4 3/28/2019 9:21:27 PM V3 3/27/2019 9:45:39 PM
+	71842 V7 4/22/2019 9:01:33 AM V6 4/2/2019 12:11:02 AM V5 3/30/2019 12:24:33 AM V4 3/28/2019 9:21:27 PM
 #CE
 
 Func ListLevel()
@@ -1156,52 +1257,89 @@ Func ListLevel()
 	Next
 
 	FileClose($hOut)
-	MsgBox(0, "List Levels done", "See: " & @ScriptDir & "\ListLevel.txt")
+	MsgBox($MB_TOPMOST, "List Levels done", "See: " & @ScriptDir & "\ListLevel.txt")
 EndFunc   ;==>ListLevel
 #CS INFO
-	85108 V1 4/3/2019 2:19:42 AM
+	85900 V2 4/22/2019 9:01:33 AM V1 4/3/2019 2:19:42 AM
 #CE
 
-Func EdEdLoadLevel()
-	If CKforLevelChange() Then
-		EdLoadLevel()
-	EndIf
+Func EdEdLoadLevel() ; called thru Controls button
+	;	If CKforLevelChange() Then
+	EdLoadLevel()
+	;	EndIf
 EndFunc   ;==>EdEdLoadLevel
 #CS INFO
-	7649 V1 4/2/2019 12:11:02 AM
+	10410 V2 4/22/2019 9:01:33 AM V1 4/2/2019 12:11:02 AM
 #CE
 
-Func EdLoadLevel()
-	Local $hlv, $x, $y, $a, $PleaseWait, $FileName, $aPos, $aMyDate, $aMyTime
+Func EdLoadBak() ;called thru Bak restore
+	; Problem Only show Current level backups
+	;Problem  Must keep current level filename
+	Local $FileName, $FileBak, $sFilter, $x
 
-	While 1
-		If $g_fEditDemo = False Then
-			$FileName = FileOpenDialog("Load Level", @ScriptDir & "\Levels\", "Level (*.lvl)", "", $FD_FILEMUSTEXIST)
-			If @error = 1 Then
-				$FileName = ""
-				Return
-			EndIf
-		Else
-			$FileName = $g_FileName
+	If $g_FileName = "" Then
+		MsgBox($MB_TOPMOST, "Restore lever", "Filename not set, Load a level")
+		Return 0
+	EndIf
+
+	$x = StringInStr($g_FileName, "\", 0, -1)
+	$sFilter = StringMid($g_FileName, $x + 1)
+	; Bak LevelXX --Data.lvl  normal LevelXX.lvd
+	;        1234567
+	$sFilter = StringLeft($sFilter, 7)
+
+	$FileBak = $g_FileName
+
+	$FileName = FileOpenDialog("Load Level", @ScriptDir & "\Levels\Bak", "Level (" & $sFilter & "*.lvl)", "", $FD_FILEMUSTEXIST)
+	If @error <> 0 Then
+		Return
+	EndIf
+	EdLoadLevelDo($FileName)
+	$g_GameChanged = True
+	$g_FileName = $FileBak
+
+EndFunc   ;==>EdLoadBak
+#CS INFO
+	55639 V1 4/22/2019 9:01:33 AM
+#CE
+
+Func EdLoadLevel() ; called thru  EdEdLoadLevel or Demo
+	Local $FileName
+
+	If $g_fEditDemo = False Then
+		$FileName = FileOpenDialog("Load Level", @ScriptDir & "\Levels\", "Level (*.lvl)", "", $FD_FILEMUSTEXIST)
+		If @error = 1 Then
+			$FileName = ""
+			Return
 		EndIf
+	Else
+		$FileName = $g_FileName
+	EndIf
+	$g_FileName = $FileName
+	EdLoadLevelDo($FileName)
 
-		$hlv = FileOpen($FileName, $FO_BINARY)
+EndFunc   ;==>EdLoadLevel
+#CS INFO
+	27818 V1 4/22/2019 9:01:33 AM
+#CE
 
-		If $hlv = -1 Then
-			MsgBox(1, "Level error: ", $FileName & " Level did not open ")
-		Else
-			ExitLoop
-		EndIf
+Func EdLoadLevelDo($FileName)
+	Local $hlv, $x, $y, $a, $PleaseWait, $aPos, $aMyDate, $aMyTime, $sName
 
-	WEnd
+	$hlv = FileOpen($FileName, $FO_BINARY)
+	If $hlv = -1 Then
+		MsgBox(1, "Level error: ", $FileName & " Level did not open ")
+		Return
+	EndIf
+
 	FileChangeDir(@ScriptDir)
 
-	$g_FileName = $FileName
-
 	$x = StringInStr($FileName, "\", 0, -1)
-	$FileName = StringMid($FileName, $x + 1)
-
-	SayLoadLevel(1, $g_ScreenEdit, $FileName)
+	$sName = StringMid($FileName, $x + 1)
+	; Bak LevelXX --Data.lvl  normal LevelXX.lvd
+	;        1234567
+	$sName = StringLeft($sName, 7)
+	SayLoadLevel(1, $g_ScreenEdit, $sName)
 
 	$g_GameChanged = False
 
@@ -1256,9 +1394,9 @@ Func EdLoadLevel()
 	EditStatus()
 	SayLoadLevel()
 
-EndFunc   ;==>EdLoadLevel
+EndFunc   ;==>EdLoadLevelDo
 #CS INFO
-	130631 V11 4/2/2019 12:11:02 AM V10 3/31/2019 4:59:34 PM V9 3/30/2019 6:02:52 PM V8 3/28/2019 9:21:27 PM
+	117886 V12 4/22/2019 9:01:33 AM V11 4/2/2019 12:11:02 AM V10 3/31/2019 4:59:34 PM V9 3/30/2019 6:02:52 PM
 #CE
 
 ;Load Level
@@ -1411,7 +1549,15 @@ EndFunc   ;==>EditObject
 	91040 V6 3/31/2019 4:59:34 PM V5 3/30/2019 6:02:52 PM V4 3/20/2019 8:28:55 PM V3 3/8/2019 8:44:22 AM
 #CE
 
-;---------------------------------------------------
+Func ClearTitle()
+	$g_FileName = ""
+	$g_GameDate = 0
+	GUICtrlSetData($g_EdTitle, "")
+EndFunc   ;==>ClearTitle
+#CS INFO
+	8054 V1 4/22/2019 9:01:33 AM
+#CE
+
 ;Both Edit and Game
 
 Func DisplayTitleDate()
@@ -3126,4 +3272,4 @@ EndFunc   ;==>Trim
 	4672 V1 3/27/2019 9:45:39 PM
 #CE
 
-;~T ScriptFunc.exe V0.53 17 Apr 2019 - 4/19/2019 12:33:28 AM
+;~T ScriptFunc.exe V0.53 17 Apr 2019 - 4/22/2019 9:01:33 AM

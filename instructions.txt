@@ -1,4 +1,4 @@
-The Game  
+The Game  version 0.83
 
 ----------------------------
 INI file
@@ -19,11 +19,15 @@ You move (up left/right), objects move, you move down.  Tick time delay to 200ms
 Start Menu: 
 
 1. Start Game
-2. Demo Level  <<-- Should run first.  Explains things.  Will soon
+2. Demo Level  <<-- Should run first.  Explains things.  
 3. Instructions  Notepad this text.  You have to close. 
+S. Setting
 E. Edit current level
 
 Q. Quit
+-----------------------------------------------------------
+Setting 
+Set Editor backup days.  Default 2, can be set 1-10
 
 ----------------------------------------------------------------------------------------
 Game: Keyboad only. Mouse can be used to activate C and Esc.
@@ -32,13 +36,13 @@ ESC = Will kill you if you get stuck. Some level have rooms you can't leave
 
 Starts at level 1. 
 
-On start it ask for a Code Key to start 
+On start it ask for a Code Key to start at a different level.
 ---------	
 
 Diamond:  You must pick up all to go to next level. Jump on and press down.
 
 
-Happy face is you.  You only move left or right. By the way you move you will go up. Nothing under you, you will drop (fast delay).
+Happy face is you.  You only move left or right. By the way you move you will go up. Nothing under you, you will drop (fast).
 
 
 Lift  light blue block: You can ride it up only, but get off somewhere on the way up or splat. Best: Start getting off one cell early. Timing.
@@ -55,6 +59,7 @@ Hidden area. You need the torch to see. There moving hidden horizonal blocks.
 
 
 Missile: You seeking. Star:  Turn off with the switch. Get on top of switch press down.  Green or Red star.
+
 Key, Torch which you should pickup. (Get on top press down)
 
 Hidden pieces (need torch) and a Door (need key).
@@ -65,38 +70,71 @@ Edit screen
 
 The white square with the red + is the cursor.
 
-Press Colors, Objects or Control for different buttons below them.  
-
 Can move with arrow key or mouse left click 
 
-To add text press button.  
+To add object to the map press space bar or right click. 
 
-To add it to the map press space bar or right click. 
-To pick up from map press C or M (NEW)
+To pick up object from map press C or M 
 
-There a Repeat button, to replace a large number of squares.  Uses the arrors keys to work.  
+----------------------
+Top row: Fix buttons
 
-If you add YOU, Missile, Missile Switch, Key or Torch.  The button will not show. To remove this put something in there place, the buttons will come back.
+Add Text: Will add text starting at the cursor to the board. Upper case, A-Z 0-9 and /:-
 
-Quit  Will warn if level been changed
+Repeat: To replace a large number of squares.  Uses the arrors keys to work.  
+	RED: it is off
+	GREEN: it is active
 
-New - Will find first level number not used, if NO then if will find next.
+2 BOLD lines: 
+	Top: What object on the board at the cursor location
+	Bottom: What object is selected.
 
-Test Level - Will NOT automatical save the level. (on the to do list)
+Quit: Exit editor
+
+------------------------
+3 Buttons to select bottom buttons.
+	Colors:  Select color objects
+	Ojects:  Select non color objects. 
+		If objects can have only 1 on sceen, once added the button disappears.
+		If you want to move that object you most replace with a different object. And the button will show.
+	Controls: see below.
+----------------
+CONTROLS:
+Load:  Loads the level to the screen. Must be used before Save, Demo, Load Backup
+
+Save:  Saves the level, create a backup of the previous level.  Will be keep for 1-10 days, default 2 Uses setting to change
+
+Demo:  Test level: Will NOT automatical save the level. (on the to do list)
 	It will run the game for 'Edit level' only.  Endless retries.
 
-Does not test for more then one you or missle.  Uses the last one loaded.  Loads starts from bottom up.
+New:  Will find first level number not used, 
+	Yes: that will be the current level name.
+	No: then it will find next.
+	Cancel: nothing will change
+
+Clear: Will removed all objects.
+
+Edit Title:  Will edit the title of the level.  Listed under the level board.
+
+List Levels: Create a list of level, title and date.  Stored in game program location.  ListLevel.txt
+
+Load Backup: Load only the level number backups. They will replace the level board, to keep the change you must save
+
+
+
+
 
 -----------------------------------------------------------------------------
 
 --------------------------------------------------------------------------------
 Need to be done.
 Startup:
-Setup
+
+Setting:
+Control Size of screen.
+
 
 Game:
-Moving up object you do not die if it moving up.  
+Moving up object you do not die if it moving up.  You should
 
 Edit:
-Clear does not clear objects should be easy fix.
-Need to backup old went new is saved.  Way to load backups.
