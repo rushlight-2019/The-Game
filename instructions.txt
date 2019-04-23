@@ -1,16 +1,7 @@
-The Game  version 0.83
+The Game  version 0.84
 
 ----------------------------
-INI file
-SizeCell: 15 Default, my sreen uses 20. Works for my resolution which is 1680x1050. 
-
-To change SizeCell, open game, quit.  Edit TheGame.ini.
-
--------------------------------------------------------------
-
-
 Game used a 200ms timing loop.  My Win 7 uses 40-50 ms per loop. My Win 10 about 120-170ms
-
 
 Game Loop
 You move (up left/right), objects move, you move down.  Tick time delay to 200ms, repeat. 
@@ -26,12 +17,14 @@ E. Edit current level
 
 Q. Quit
 -----------------------------------------------------------
-Setting 
-Set Editor backup days.  Default 2, can be set 1-10
+Setting:
+
+Screen Size: Default is maximum of desktop screen.  Can be set from Maximum to 10.
+Backup days:  Edits are backup X days. Default 2, can be set 1-10  
 
 ----------------------------------------------------------------------------------------
 Game: Keyboad only. Mouse can be used to activate C and Esc.
-C = Cancel Game back to start Menu
+C = Cancel Game back to start Menu. No high score.
 ESC = Will kill you if you get stuck. Some level have rooms you can't leave
 
 Starts at level 1. 
@@ -51,14 +44,12 @@ Lift  light blue block: You can ride it up only, but get off somewhere on the wa
 Vertical moving blocks. Triangle:  You can ride down but not up. Don't run into them, it deadly.  
 
 Horizonal moving blocks. + - :  Deadly if you run to them or them into you.  
-                                You can jump on top and when they move a way you will drop.
 
 Hidden area. You need the torch to see. There moving hidden horizonal blocks.
 
 ~~ you can ride down. They DON'T go back up.
 
-
-Missile: You seeking. Star:  Turn off with the switch. Get on top of switch press down.  Green or Red star.
+Missile: You seeking. Gold Star:  Turn off with the switch. Get on top of switch press down.  Green or Red star.
 
 Key, Torch which you should pickup. (Get on top press down)
 
@@ -96,7 +87,7 @@ Quit: Exit editor
 	Colors:  Select color objects
 	Ojects:  Select non color objects. 
 		If objects can have only 1 on sceen, once added the button disappears.
-		If you want to move that object you most replace with a different object. And the button will show.
+		If you want to move that object you most replace it with a different object. And the button will show.
 	Controls: see below.
 ----------------
 CONTROLS:
@@ -121,6 +112,7 @@ List Levels: Create a list of level, title and date.  Stored in game program loc
 Load Backup: Load only the level number backups. They will replace the level board, to keep the change you must save
 
 
+(not active) To DELETE a level change title to DELETE, then Save and run List Levels 
 
 
 
@@ -131,10 +123,14 @@ Need to be done.
 Startup:
 
 Setting:
-Control Size of screen.
-
 
 Game:
-Moving up object you do not die if it moving up.  You should
+Moving up object you do not die if it moving up.  You should.
+(New) transport.
+After last level do random levels.
 
 Edit:
+To DELETE a level change title to DELETE, then Save and run List Levels 
+
+Pictures
+Lift

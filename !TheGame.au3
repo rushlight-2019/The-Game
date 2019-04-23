@@ -6,10 +6,10 @@
 #EndRegion ;**** Directives created by AutoIt3Wrapper_GUI ****
 AutoItSetOption("MustDeclareVars", 1)
 
-Global $ver = "0.83 22 Apr 19 Back up level when saved"
+Global $ver = "0.84 23 Apr 19 Screen size in setting"
 
 Global $_debug = False
-Global $TESTING = True
+Global $TESTING = False
 
 #cs ----------------------------------------------------------------------------
 
@@ -18,10 +18,10 @@ Global $TESTING = True
 	Version 3, 29 June 2007
 
 	see instruction.txt
-	Setting  Screen size
+
 	End of game by doing random levels.   Hiscore show random level done count
 
-	Working on Setting too.
+	0.84 23 Apr 19 Screen size in setting
 	0.83 22 Apr 19 Back up level when saved.  Keep  2 days of edit.
 	0.82 18 Apr 19 Editor New
 	0.81 2 Apr 19 List Level name and date into a text file  LevelList.txt
@@ -200,11 +200,11 @@ Global Static $g_Top = 15 ; space between top edge and map Going to add the TITL
 
 Global Static $g_cSetting = "TheGame" & ".ini"
 
-Global $g_Size = 15 ;15 ;INI Side of block side of picture 15 min 5  20 my big INI   ;Opps if you can something in INI you half to change the globals.
+Global $g_Size
 $g_Size = Int(IniRead($g_cSetting, "General", "SizeCell", 0))
 If $g_Size = 0 Then
-	IniWrite($g_cSetting, "General", "SizeCell", 15)
-	$g_Size = 15
+	$g_Size = Int(@DesktopWidth / 84)
+	IniWrite($g_cSetting, "General", "SizeCell", $g_Size)
 EndIf
 ;
 Global $s_iHalfway = (($g_Size * $s_iBoxX) + $s_iTextBorder) / 2 ;used for game lines so left side in not overwriten
@@ -404,7 +404,7 @@ Func Settings()
 	GUICtrlSetFont(-1, 14, 400, 0, "MS Sans Serif")
 	Local $ScreenSize = GUICtrlCreateButton("Screen Size", 32, 48, 153, 41)
 	Local $BackupDays = GUICtrlCreateButton("Backup days", 248, 48, 129, 41)
-	Local $Button3 = GUICtrlCreateButton("Button3", 432, 40, 145, 49)
+	;	Local $Button3 = GUICtrlCreateButton("Button3", 432, 40, 145, 49)
 	GUISetState(@SW_SHOW)
 
 	While 1
@@ -415,6 +415,7 @@ Func Settings()
 				GUIDelete($Setting)
 				ExitLoop
 			Case $ScreenSize
+				ScreenSize()
 			Case $BackupDays
 				$y = InputBox("Days to keep backup of  Edited levels.", "Days, 1 to 10, to keep backup of saved edit levels." & @CRLF & "Default = 2" & @CRLF & "Files are 2k in size.", $g_iBakdays)
 				Select
@@ -425,7 +426,6 @@ Func Settings()
 						ElseIf $g_iBakdays > 10 Then
 							$g_iBakdays = 10
 						EndIf
-
 						IniWrite($g_cSetting, "General", "BackupDays", $g_iBakdays)
 						ExitLoop
 					Case Else ;The Cancel button was pushed  The InputBox failed to open
@@ -439,7 +439,44 @@ Func Settings()
 	GUIDelete($Setting)
 EndFunc   ;==>Settings
 #CS INFO
-	84560 V1 4/22/2019 9:01:33 AM
+	85719 V2 4/23/2019 2:50:23 AM V1 4/22/2019 9:01:33 AM
+#CE
+
+Func ScreenSize()
+	Local $sInputBoxAnswer, $keep, $s, $math
+
+	$keep = $g_Size
+	$math = Int(@DesktopWidth / 84)
+	$s = "Current cell size: " & $g_Size & @CRLF & "Desktop screen size: " & @DesktopWidth & @CRLF & "Maximum cell size: "
+	$s &= $math & @CRLF & @CRLF & "Use Maximum cell size or enter a smaller size."
+
+	$sInputBoxAnswer = Int(inputBox("Cell size", $s, $math))
+	Select
+		Case @error = 0 ;OK - The string returned is valid
+
+			If $sInputBoxAnswer <= $math Then
+				If $sInputBoxAnswer < 10 Then
+					$sInputBoxAnswer = 10
+				EndIf
+				$g_Size = Int($sInputBoxAnswer)
+			Else
+				$g_Size = $math
+			EndIf
+			If $g_Size <> $keep Then
+				IniWrite($g_cSetting, "General", "SizeCell", $g_Size)
+				Sleep(500)
+
+				If @Compiled Then
+					Run(@ScriptFullPath)
+				Else
+					Pause("Compile it would restart the program")
+				EndIf
+				Exit
+			EndIf
+	EndSelect
+EndFunc   ;==>ScreenSize
+#CS INFO
+	62313 V1 4/23/2019 2:50:23 AM
 #CE
 
 ;INI Section Score  ScoreWho
@@ -1721,7 +1758,7 @@ Func StartScreen()
 		$Action3 = GUICtrlCreateLabel('3. Instructions', $c_iSSleft, $iLine, $c_iSSwidth, 24) ; Height is twice font size
 		GUICtrlSetFont(-1, 12, 400, 0, "MS Sans Serif")
 		$iLine += 24
-		$Action4 = GUICtrlCreateLabel('4. Settings  (not functional)', $c_iSSleft, $iLine, $c_iSSwidth, 24) ; Height is twice font size
+		$Action4 = GUICtrlCreateLabel('4. Settings', $c_iSSleft, $iLine, $c_iSSwidth, 24) ; Height is twice font size
 		GUICtrlSetFont(-1, 12, 400, 0, "MS Sans Serif")
 		$iLine += 24
 		$ActionE = GUICtrlCreateLabel('E. Edit Level', $c_iSSleft, $iLine, $c_iSSwidth, 24) ; Height is twice font size
@@ -1766,7 +1803,7 @@ Func StartScreen()
 	Return $g_iSSkey
 EndFunc   ;==>StartScreen
 #CS INFO
-	315995 V9 4/18/2019 4:49:42 PM V8 3/30/2019 6:02:52 PM V7 3/17/2019 2:57:13 AM V6 3/13/2019 1:18:00 AM
+	314502 V10 4/23/2019 2:50:23 AM V9 4/18/2019 4:49:42 PM V8 3/30/2019 6:02:52 PM V7 3/17/2019 2:57:13 AM
 #CE
 
 ;-----------------------------------------
@@ -3272,4 +3309,4 @@ EndFunc   ;==>Trim
 	4672 V1 3/27/2019 9:45:39 PM
 #CE
 
-;~T ScriptFunc.exe V0.53 17 Apr 2019 - 4/22/2019 9:01:33 AM
+;~T ScriptFunc.exe V0.53 17 Apr 2019 - 4/23/2019 2:50:23 AM
