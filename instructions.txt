@@ -1,4 +1,4 @@
-The Game  version 0.84
+The Game  version 0.86
 
 ----------------------------
 Game used a 200ms timing loop.  My Win 7 uses 40-50 ms per loop. My Win 10 about 120-170ms
@@ -112,7 +112,7 @@ List Levels: Create a list of level, title and date.  Stored in game program loc
 Load Backup: Load only the level number backups. They will replace the level board, to keep the change you must save
 
 
-(not active) To DELETE a level change title to DELETE, then Save and run List Levels 
+	To DELETE a level change title to DELETE, then Save and run List Levels 
 
 
 
@@ -125,12 +125,11 @@ Startup:
 Setting:
 
 Game:
-Moving up object you do not die if it moving up.  You should.
 (New) transport.
 After last level do random levels.
 
 Edit:
-To DELETE a level change title to DELETE, then Save and run List Levels 
+Hide buttons you can't use before loading a level or adding a new level name.
 
-Pictures
+Pictures update
 Lift

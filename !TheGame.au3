@@ -6,7 +6,7 @@
 #EndRegion ;**** Directives created by AutoIt3Wrapper_GUI ****
 AutoItSetOption("MustDeclareVars", 1)
 
-Global $ver = "0.84 23 Apr 19 Screen size in setting"
+Global $ver = "0.86 23 Apr 19 To DELETE a level change title to DELETE, then Save and run List Levels "
 
 Global $_debug = False
 Global $TESTING = False
@@ -19,8 +19,8 @@ Global $TESTING = False
 
 	see instruction.txt
 
-	End of game by doing random levels.   Hiscore show random level done count
-
+	0.86 23 Apr 19 To DELETE a level change title to DELETE, then Save and run List Levels
+	0.85 23 Apr 19 Moving up vert object you do not die if it moving up.  You should. - 2 lines fix
 	0.84 23 Apr 19 Screen size in setting
 	0.83 22 Apr 19 Back up level when saved.  Keep  2 days of edit.
 	0.82 18 Apr 19 Editor New
@@ -450,7 +450,7 @@ Func ScreenSize()
 	$s = "Current cell size: " & $g_Size & @CRLF & "Desktop screen size: " & @DesktopWidth & @CRLF & "Maximum cell size: "
 	$s &= $math & @CRLF & @CRLF & "Use Maximum cell size or enter a smaller size."
 
-	$sInputBoxAnswer = Int(inputBox("Cell size", $s, $math))
+	$sInputBoxAnswer = Int(InputBox("Cell size", $s, $math))
 	Select
 		Case @error = 0 ;OK - The string returned is valid
 
@@ -476,7 +476,7 @@ Func ScreenSize()
 	EndSelect
 EndFunc   ;==>ScreenSize
 #CS INFO
-	62313 V1 4/23/2019 2:50:23 AM
+	62281 V2 4/23/2019 12:08:13 PM V1 4/23/2019 2:50:23 AM
 #CE
 
 ;INI Section Score  ScoreWho
@@ -570,11 +570,10 @@ EndFunc   ;==>DoDemoLevel
 ;-------------------------------------------------=
 
 Func Instructions()
-	Local $_Run = "notepad.exe " & @ScriptDir & "\instructions.txt"
-	Run($_Run, @WindowsDir, @SW_MAXIMIZE)
+	Run("notepad.exe " & @ScriptDir & "\instructions.txt", "", @SW_MAXIMIZE)
 EndFunc   ;==>Instructions
 #CS INFO
-	12076 V2 2/24/2019 6:05:52 PM V1 2/24/2019 10:03:19 AM
+	9614 V3 4/23/2019 12:08:13 PM V2 2/24/2019 6:05:52 PM V1 2/24/2019 10:03:19 AM
 #CE
 
 ;~~
@@ -1075,25 +1074,31 @@ EndFunc   ;==>CKforLevelChange
 #CE
 
 Func EditLevelTitle()
-	Local $sInputBoxAnswer, $aMyDate, $aMyTime
+	Local $sInputBoxAnswer, $aMyDate, $aMyTime, $s, $ans
 
-	$sInputBoxAnswer = InputBox("Edit Level Title", "Title of Level , don't use date, that will be added at Level save.  Use a version number if you want.", $g_GameTitle)
+	$sInputBoxAnswer = InputBox("Edit Level Title", "Title of Level." & @CRLF & "If you wan the level deleted enter 'DELETE'", $g_GameTitle)
 	Select
 		Case @error = 0 ;OK - The string returned is valid
-			$g_GameTitle = $sInputBoxAnswer
-			_DateTimeSplit(_Now(), $aMyDate, $aMyTime)
-			$g_GameDate = StringRight($aMyDate[3], 2) & StringFormat("%2s%2s", $aMyDate[1], $aMyDate[2])
-			$g_GameChanged = True
-			DisplayTitleDate()
-		Case @error = 1 ;The Cancel button was pushed
-
-		Case @error = 3 ;The InputBox failed to open
-
+			; Check for DELETE
+			$ans = $IDYES
+			If $sInputBoxAnswer == "DELETE" Then
+				$s = "Using this title DELETE, will cause the level to be deleted!" & @CRLF
+				$s &= "To delete, Save Level and then press 'List Levels'" & @CRLF & @CRLF
+				$s &= "Do you want to do this?"
+				$ans = MsgBox($MB_TOPMOST + $MB_YESNO, "Title name is DELETE", $s)
+			EndIf
+			If $ans = $IDYES Then
+				$g_GameTitle = $sInputBoxAnswer
+				_DateTimeSplit(_Now(), $aMyDate, $aMyTime)
+				$g_GameDate = StringRight($aMyDate[3], 2) & StringFormat("%2s%2s", $aMyDate[1], $aMyDate[2])
+				$g_GameChanged = True
+				DisplayTitleDate()
+			EndIf
 	EndSelect
 
 EndFunc   ;==>EditLevelTitle
 #CS INFO
-	50901 V1 3/28/2019 9:21:27 PM
+	66333 V2 4/23/2019 12:08:13 PM V1 3/28/2019 9:21:27 PM
 #CE
 
 Func SetupWhich(ByRef $aArray, $string)
@@ -1251,9 +1256,10 @@ EndFunc   ;==>EdSaveLevel
 #CE
 
 Func ListLevel()
-	Local $hlv, $hOut, $x, $y, $a, $FileName, $aPos, $aMyDate, $aMyTime
+	Local $hlv, $hOut, $x, $y, $a, $FileName, $aPos, $aMyDate, $aMyTime, $fSkip
 
 	$hOut = FileOpen(@ScriptDir & "\ListLevel.txt", $FO_OVERWRITE)
+	$fSkip = False
 
 	For $x = 0 To 99
 		If $x < 10 Then
@@ -1283,21 +1289,44 @@ Func ListLevel()
 					$g_GameDate = 0
 				EndIf
 
+				;delete file
+				Local $fDelete = False
+				Local $sDelete = ""
+
+				If $g_GameTitle == "DELETE" Then
+					$fDelete = True
+					$sDelete = @TAB & @TAB & @TAB & @TAB & @TAB & " Level was Deleted."
+					$a = FileDelete(@ScriptDir & "\Levels\" & $FileName)
+					If $a = 0 Then
+						MsgBox(0, "File Delete error", @ScriptDir & "\Levels\" & $FileName & "fail to delete!")
+					EndIf
+				EndIf
+
 				If $g_GameDate = 0 Then
-					FileWriteLine($hOut, $FileName & ": " & $g_GameTitle)
+					FileWriteLine($hOut, $FileName & ": " & $g_GameTitle & $sDelete)
 				Else
 					$a = Trim(StringMid($g_GameDate, 3, 2)) & "/" & Trim(StringMid($g_GameDate, 5, 2)) & "/20" & StringLeft($g_GameDate, 2)
-					FileWriteLine($hOut, $FileName & ": " & $g_GameTitle & " -- " & $a)
+					FileWriteLine($hOut, $FileName & ": " & $g_GameTitle & " -- " & $a & $sDelete)
 				EndIf
+				$fSkip = True
+			EndIf
+		Else
+			If $fSkip Then ; if there no file for a level print CR once
+				FileWriteLine($hOut, "")
+				$fSkip = False
 			EndIf
 		EndIf
 	Next
 
 	FileClose($hOut)
-	MsgBox($MB_TOPMOST, "List Levels done", "See: " & @ScriptDir & "\ListLevel.txt")
+	$a = MsgBox($MB_TOPMOST + $MB_YESNO, "List Levels done", "See: " & @ScriptDir & "\ListLevel.txt" & @CRLF & @CRLF & "Do you want to see list?")
+	If $a = $IDYES Then
+		Run("notepad.exe " & @ScriptDir & "\ListLevel.txt", "", @SW_MAXIMIZE)
+	EndIf
+
 EndFunc   ;==>ListLevel
 #CS INFO
-	85900 V2 4/22/2019 9:01:33 AM V1 4/3/2019 2:19:42 AM
+	133451 V3 4/23/2019 12:08:13 PM V2 4/22/2019 9:01:33 AM V1 4/3/2019 2:19:42 AM
 #CE
 
 Func EdEdLoadLevel() ; called thru Controls button
@@ -1588,11 +1617,12 @@ EndFunc   ;==>EditObject
 
 Func ClearTitle()
 	$g_FileName = ""
+	$g_GameTitle = ""
 	$g_GameDate = 0
 	GUICtrlSetData($g_EdTitle, "")
 EndFunc   ;==>ClearTitle
 #CS INFO
-	8054 V1 4/22/2019 9:01:33 AM
+	9309 V2 4/23/2019 12:08:13 PM V1 4/22/2019 9:01:33 AM
 #CE
 
 ;Both Edit and Game
@@ -2527,14 +2557,15 @@ Func MoveYouDown()
 			Case 6 ; Water
 				$g_iDead = 1
 				;Case 8 ;Lift
-
+			Case 15 ; Vert up
+				$g_iDead = 3
 		EndSwitch
 	EndIf
 
 	Return False
 EndFunc   ;==>MoveYouDown
 #CS INFO
-	23829 V3 4/3/2019 2:19:42 AM V2 2/24/2019 6:05:52 PM V1 2/24/2019 12:43:53 AM
+	25833 V4 4/23/2019 12:08:13 PM V3 4/3/2019 2:19:42 AM V2 2/24/2019 6:05:52 PM V1 2/24/2019 12:43:53 AM
 #CE
 
 #cs
@@ -2999,7 +3030,7 @@ Func MoveVert($i, $x, $y, $flag)
 	ElseIf $Hit = $EMPTY Then
 		ClearObject($x, $y)
 		If $g_aObj[$i][$s_HVdir] = 1 Then
-			ShowObject($x, $ty, 15)
+			ShowObject($x, $ty, 15) ;up
 		Else
 			ShowObject($x, $ty, 16)
 		EndIf
@@ -3014,7 +3045,7 @@ Func MoveVert($i, $x, $y, $flag)
 	EndIf
 EndFunc   ;==>MoveVert
 #CS INFO
-	35254 V3 3/21/2019 4:38:57 PM V2 2/24/2019 6:05:52 PM V1 2/24/2019 12:43:53 AM
+	35542 V4 4/23/2019 12:08:13 PM V3 3/21/2019 4:38:57 PM V2 2/24/2019 6:05:52 PM V1 2/24/2019 12:43:53 AM
 #CE
 
 Func DoDoor($x, $y)
@@ -3309,4 +3340,4 @@ EndFunc   ;==>Trim
 	4672 V1 3/27/2019 9:45:39 PM
 #CE
 
-;~T ScriptFunc.exe V0.53 17 Apr 2019 - 4/23/2019 2:50:23 AM
+;~T ScriptFunc.exe V0.53 17 Apr 2019 - 4/23/2019 12:08:13 PM
