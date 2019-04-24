@@ -1,4 +1,4 @@
-The Game  version 0.86
+The Game  version 0.89
 
 ----------------------------
 Game used a 200ms timing loop.  My Win 7 uses 40-50 ms per loop. My Win 10 about 120-170ms
@@ -129,7 +129,7 @@ Game:
 After last level do random levels.
 
 Edit:
-Hide buttons you can't use before loading a level or adding a new level name.
+
 
 Pictures update
 Lift

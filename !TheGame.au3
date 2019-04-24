@@ -6,7 +6,7 @@
 #EndRegion ;**** Directives created by AutoIt3Wrapper_GUI ****
 AutoItSetOption("MustDeclareVars", 1)
 
-Global $ver = "0.86 23 Apr 19 To DELETE a level change title to DELETE, then Save and run List Levels "
+Global $ver = "0.89 23 Apr 19 You button coming on at wrong time"
 
 Global $_debug = False
 Global $TESTING = False
@@ -17,8 +17,10 @@ Global $TESTING = False
 	GNU GENERAL PUBLIC LICENSE
 	Version 3, 29 June 2007
 
-	see instruction.txt
-
+	to do: see bottom of instruction.txt
+	0.89 23 Apr 19 You button coming on at wrong time
+	0.88 23 Apr 19 New level fails
+	0.87 23 Apr 19 Hide buttons you can't use before loading a level or adding a new level name.
 	0.86 23 Apr 19 To DELETE a level change title to DELETE, then Save and run List Levels
 	0.85 23 Apr 19 Moving up vert object you do not die if it moving up.  You should. - 2 lines fix
 	0.84 23 Apr 19 Screen size in setting
@@ -284,9 +286,11 @@ Global $g_fEdKey = False
 Global $g_fEdTorch = False
 
 Global $g_EdQuit
-Global $Which0[25][2]
-Global $Which1[25][2]
-Global $Which2[25][2]
+Global $g_WhichCur = 2
+
+Global $g_Which0[25][2]
+Global $g_Which1[25][2]
+Global $g_Which2[25][2]
 Global $g_Under, $g_Selected
 Global $b[25]
 
@@ -678,7 +682,7 @@ Func EditScreen()
 		$b[18] = GUICtrlCreateButton("", $iHalf + $iW * .5, $g_iEditLine + 230, $iW, 30)
 		$b[19] = GUICtrlCreateButton("", $iHalf + $iW * 1.5, $g_iEditLine + 230, $iW, 30)
 
-		$b[20] = GUICtrlCreateButton("20", $iHalf - $iW * 2.5, $g_iEditLine + 270, $iW, 30)
+		$b[20] = GUICtrlCreateButton("", $iHalf - $iW * 2.5, $g_iEditLine + 270, $iW, 30)
 		$b[21] = GUICtrlCreateButton("", $iHalf - $iW * 1.5, $g_iEditLine + 270, $iW, 30)
 		$b[22] = GUICtrlCreateButton("", $iHalf - $iW * .5, $g_iEditLine + 270, $iW, 30)
 		$b[23] = GUICtrlCreateButton("", $iHalf + $iW * .5, $g_iEditLine + 270, $iW, 30)
@@ -687,17 +691,17 @@ Func EditScreen()
 		;Computer Which buttons
 		$string = "0,Empty,0,1, Blue,128,5,Green,129,2,Dark Blue,130,3,Darkest Blue,131,4,Light Blue,136,6,Dark Green,132,8,Darker Red,133,7,Red,134,9,Earth,135,12, Hidden,17,14,White,254"
 		; all use the same function so string the Color value for the function
-		SetupWhich($Which0, $string)
+		SetupWhich($g_Which0, $string)
 
 		$string = "0,Empty,0,22,You,1,4,Diamond,2,5,Water,6,7,Key,3,9,Torch,4,8,Door,5" ;,1,Blue,128,2,Red,134,3,Green,129"
 		$string &= ",10,Lift,8,11,Ride Down,9,12,Missile Off,7,13,Missile,31,14,Hidden,17"
 		$string &= ",15,Horz Right,11,16,Horz Left,13,18,Hid move,12,17,Vertical,15"
-		SetupWhich($Which1, $string)
+		SetupWhich($g_Which1, $string)
 		$string = "0,Load,EdEdLoadLevel, 11,Save,EdSaveLevel,9,Clear,EdClearScreen,20,Demo,StrDemo,4,New,NewLevel,19,Edit Title,EditLevelTitle,24,List Levels,ListLevel,23,Load Backup,EdLoadBak"
-		SetupWhich($Which2, $string)
-		;_ArrayDisplay($Which0)
-		;_ArrayDisplay($Which1)
-		;_ArrayDisplay($Which2)
+		SetupWhich($g_Which2, $string)
+		;_ArrayDisplay($g_Which0)
+		;_ArrayDisplay($g_Which1)
+		;_ArrayDisplay($g_Which2)
 	EndIf
 
 	GUISetState(@SW_SHOW, $g_ScreenEdit)
@@ -725,16 +729,27 @@ Func EditScreen()
 	$g_EdQuit = True
 	$nMsg = 0
 
-	Local $WhichCur
-	$WhichCur = 2
+	$g_WhichCur = 2
 	GUICtrlSetFont($Which[2], 8.5, $FW_HEAVY)
+	; "0,Load,EdEdLoadLevel, 11,Save,EdSaveLevel,9,Clear,EdClearScreen,20,Demo,StrDemo,4,New,NewLevel,19,Edit Title,EditLevelTitle,24,List Levels,ListLevel,23,Load Backup,EdLoadBak"
+
 	For $z = 0 To 24
-		If $Which2[$z][0] = "" Then
+
+		If $g_Which2[$z][0] = "" Then
 			GUICtrlSetState($b[$z], $GUI_HIDE)
 		Else
-			GUICtrlSetData($b[$z], $Which2[$z][0])
-			GUICtrlSetState($b[$z], $GUI_SHOW)
+			If $g_FileName = "" And Not ($z = 0 Or $z = 4 Or $z = 24) Then
+				GUICtrlSetState($b[$z], $GUI_HIDE)
+			Else
+				If $z = 20 And $g_GameChanged Then
+					GUICtrlSetState($b[$z], $GUI_HIDE)
+				Else
+					GUICtrlSetData($b[$z], $g_Which2[$z][0])
+					GUICtrlSetState($b[$z], $GUI_SHOW)
+				EndIf
+			EndIf
 		EndIf
+
 	Next
 
 	$g_fEdRepeat = False
@@ -752,17 +767,19 @@ Func EditScreen()
 			For $z = 0 To 24
 				If $nMsg = $b[$z] Then
 					$flag = False
-					Switch $WhichCur
+					Switch $g_WhichCur
 						Case 2
-							Call($Which2[$z][1])
+							Call($g_Which2[$z][1])
 							If @error = 0xDEAD And @extended = 0xBEEF Then
-								MsgBox($MB_SYSTEMMODAL, "", "Function does not exist. Z = " & $z & " Func: " & $Which2[$z][1])
+								MsgBox($MB_SYSTEMMODAL, "", "Function does not exist. Z = " & $z & " Func: " & $g_Which2[$z][1])
 								Exit
 							EndIf
+							$nMsg = $Which[2]
+							$flag = True
 						Case 1
-							$g_iPick = Int($Which1[$z][1])
+							$g_iPick = Int($g_Which1[$z][1])
 						Case 0
-							$g_iPick = Int($Which0[$z][1])
+							$g_iPick = Int($g_Which0[$z][1])
 					EndSwitch
 					EditStatus()
 					ExitLoop
@@ -774,70 +791,87 @@ Func EditScreen()
 			Switch $nMsg
 
 				Case $Which[0] ; Colors
-					GUICtrlSetFont($Which[$WhichCur], 8.5, $FW_NORMAL)
-					GUICtrlSetFont($Which[0], 8.5, $FW_HEAVY)
+					If $g_FileName <> "" Then
 
-					$WhichCur = 0
-					For $z = 0 To 24
-						If $Which0[$z][0] = "" Then
-							GUICtrlSetState($b[$z], $GUI_HIDE)
-						Else
-							GUICtrlSetData($b[$z], $Which0[$z][0])
-							GUICtrlSetState($b[$z], $GUI_SHOW)
-						EndIf
-					Next
+						GUICtrlSetFont($Which[$g_WhichCur], 8.5, $FW_NORMAL)
+						GUICtrlSetFont($Which[0], 8.5, $FW_HEAVY)
+
+						$g_WhichCur = 0
+						For $z = 0 To 24
+							If $g_Which0[$z][0] = "" Then
+								GUICtrlSetState($b[$z], $GUI_HIDE)
+							Else
+								GUICtrlSetData($b[$z], $g_Which0[$z][0])
+								GUICtrlSetState($b[$z], $GUI_SHOW)
+							EndIf
+						Next
+					EndIf
 
 				Case $Which[1] ; Object
-					GUICtrlSetFont($Which[$WhichCur], 8.5, $FW_NORMAL)
-					GUICtrlSetFont($Which[1], 8.5, $FW_HEAVY)
-					$WhichCur = 1
+					If $g_FileName <> "" Then
 
-					For $z = 0 To 24
-						If $Which1[$z][0] = "" Then
-							GUICtrlSetState($b[$z], $GUI_HIDE)
-						Else
-							GUICtrlSetData($b[$z], $Which1[$z][0])
-							GUICtrlSetState($b[$z], $GUI_SHOW + $GUI_ENABLE)
-							Switch $Which1[$z][1]
-								Case $YOU
-									If $g_fEdYou Then
-										GUICtrlSetState($b[$z], $GUI_HIDE)
-									EndIf
-								Case 31
-									If $g_fEdMissile Then
-										GUICtrlSetState($b[$z], $GUI_HIDE)
-									EndIf
-								Case 7
-									If $g_fEdSwitch Then
-										GUICtrlSetState($b[$z], $GUI_HIDE)
-									EndIf
-								Case 3
-									If $g_fEdKey Then
-										GUICtrlSetState($b[$z], $GUI_HIDE)
-									EndIf
-								Case 4
-									If $g_fEdTorch Then
-										GUICtrlSetState($b[$z], $GUI_HIDE)
-									EndIf
-							EndSwitch
+						GUICtrlSetFont($Which[$g_WhichCur], 8.5, $FW_NORMAL)
+						GUICtrlSetFont($Which[1], 8.5, $FW_HEAVY)
+						$g_WhichCur = 1
 
-						EndIf
-					Next
+						For $z = 0 To 24
+							If $g_Which1[$z][0] = "" Then
+								GUICtrlSetState($b[$z], $GUI_HIDE)
+							Else
+								GUICtrlSetData($b[$z], $g_Which1[$z][0])
+								GUICtrlSetState($b[$z], $GUI_SHOW + $GUI_ENABLE)
+								Switch $g_Which1[$z][1]
+									Case $YOU
+										If $g_fEdYou Then
+											GUICtrlSetState($b[$z], $GUI_HIDE)
+										EndIf
+									Case 31
+										If $g_fEdMissile Then
+											GUICtrlSetState($b[$z], $GUI_HIDE)
+										EndIf
+									Case 7
+										If $g_fEdSwitch Then
+											GUICtrlSetState($b[$z], $GUI_HIDE)
+										EndIf
+									Case 3
+										If $g_fEdKey Then
+											GUICtrlSetState($b[$z], $GUI_HIDE)
+										EndIf
+									Case 4
+										If $g_fEdTorch Then
+											GUICtrlSetState($b[$z], $GUI_HIDE)
+										EndIf
+								EndSwitch
+
+							EndIf
+						Next
+					EndIf
 
 				Case $Which[2] ; Controls
 
-					GUICtrlSetFont($Which[$WhichCur], 8.5, $FW_NORMAL)
+					GUICtrlSetFont($Which[$g_WhichCur], 8.5, $FW_NORMAL)
 					GUICtrlSetFont($Which[2], 8.5, $FW_HEAVY)
 
-					$WhichCur = 2
+					$g_WhichCur = 2
 
+					; "0,Load,EdEdLoadLevel, 11,Save,EdSaveLevel,9,Clear,EdClearScreen,20,Demo,StrDemo,4,New,NewLevel,19,Edit Title,EditLevelTitle,24,List Levels,ListLevel,23,Load Backup,EdLoadBak"
 					For $z = 0 To 24
-						If $Which2[$z][0] = "" Then
+
+						If $g_Which2[$z][0] = "" Then
 							GUICtrlSetState($b[$z], $GUI_HIDE)
 						Else
-							GUICtrlSetData($b[$z], $Which2[$z][0])
-							GUICtrlSetState($b[$z], $GUI_SHOW)
+							If $g_FileName = "" And Not ($z = 0 Or $z = 4 Or $z = 24) Then
+								GUICtrlSetState($b[$z], $GUI_HIDE)
+							Else
+								If $z = 20 And ($g_GameChanged Or $g_fEdYou = False) Then
+									GUICtrlSetState($b[$z], $GUI_HIDE)
+								Else
+									GUICtrlSetData($b[$z], $g_Which2[$z][0])
+									GUICtrlSetState($b[$z], $GUI_SHOW)
+								EndIf
+							EndIf
 						EndIf
+
 					Next
 
 				Case $ls_idLeft
@@ -939,22 +973,23 @@ Func EditScreen()
 					EndIf
 
 				Case $ls_bKeyInput
-					;	HotKeySet("{Space}") ;5
-					GUISetAccelerators(1, $g_ScreenEdit)
-					$sLetters = InputBox("Input String", "Display upper case A-Z 0-9 /:-", "", "", -1, -1, Default, Default, 0, $g_ScreenEdit)
-					GUISetAccelerators($aAccelKey2, $g_ScreenEdit)
-					If $sLetters <> "" Then
-						$sLetters = StringUpper($sLetters)
-						If StringLen($sLetters) + $g_iEdit_Xcur > 80 Then ;Too long
-							MsgBox($MB_TOPMOST, "String too long", "String too long!")
-						Else
-							For $z = 1 To StringLen($sLetters)
-								If StringMid($sLetters, $z, 1) = " " Then
-									ShowObject($g_iEdit_Xcur + $z - 1, $g_iEdit_Ycur, $EMPTY)
-								Else
-									ShowObject($g_iEdit_Xcur + $z - 1, $g_iEdit_Ycur, Asc(StringMid($sLetters, $z, 1)))
-								EndIf
-							Next
+					If $g_FileName <> "" Then
+						GUISetAccelerators(1, $g_ScreenEdit)
+						$sLetters = InputBox("Input String", "Display upper case A-Z 0-9 /:-", "", "", -1, -1, Default, Default, 0, $g_ScreenEdit)
+						GUISetAccelerators($aAccelKey2, $g_ScreenEdit)
+						If $sLetters <> "" Then
+							$sLetters = StringUpper($sLetters)
+							If StringLen($sLetters) + $g_iEdit_Xcur > 80 Then ;Too long
+								MsgBox($MB_TOPMOST, "String too long", "String too long!")
+							Else
+								For $z = 1 To StringLen($sLetters)
+									If StringMid($sLetters, $z, 1) = " " Then
+										ShowObject($g_iEdit_Xcur + $z - 1, $g_iEdit_Ycur, $EMPTY)
+									Else
+										ShowObject($g_iEdit_Xcur + $z - 1, $g_iEdit_Ycur, Asc(StringMid($sLetters, $z, 1)))
+									EndIf
+								Next
+							EndIf
 						EndIf
 					EndIf
 
@@ -1007,26 +1042,27 @@ Func EditScreen()
 
 EndFunc   ;==>EditScreen
 #CS INFO
-	948584 V21 4/22/2019 9:01:33 AM V20 4/18/2019 4:49:42 PM V19 4/3/2019 2:19:42 AM V18 4/2/2019 12:11:02 AM
+	1017125 V22 4/23/2019 8:02:57 PM V21 4/22/2019 9:01:33 AM V20 4/18/2019 4:49:42 PM V19 4/3/2019 2:19:42 AM
 #CE
 
 Func NewLevel()
-	; 1. Find Next unused  level name
 	;	@workingdir
-	Local $sLevelPath, $aLevels, $s
+	Local $sLevelPath, $aLevels, $s, $filename
 	Local $iMsgBoxAnswer
 	Local $flag = False
 
 	$sLevelPath = @WorkingDir & "\levels\"
-	Local $aLevels = _FileListToArray($sLevelPath, "*.lvl", $FLTA_FILES)
-	For $z = 1 To $aLevels[0]
-		If $z < 10 Then
-			$s = "0" & String($z - 1)
-		Else
-			$s = String($z - 1)
-		EndIf
+	;Local $aLevels = _FileListToArray($sLevelPath, "*.lvl", $FLTA_FILES)
 
-		If $aLevels[$z] <> "Level" & $s & ".lvl" Then
+	For $z = 1 To 99 ; 0 demo
+		If $z < 10 Then
+			$s = "0" & String($z)
+		Else
+			$s = String($z)
+		EndIf
+		$filename = "Level" & $s & ".lvl"
+
+		If FileExists(@WorkingDir & "\levels\" & $filename) = 0 Then ;not exist
 			$iMsgBoxAnswer = MsgBox(262147, "Change Level name", "Level" & $s & ".lvl" & @CRLF & "Do you want to change the current level to this name?")
 			Select
 				Case $iMsgBoxAnswer = 6 ;Yes
@@ -1052,7 +1088,7 @@ Func NewLevel()
 
 EndFunc   ;==>NewLevel
 #CS INFO
-	70723 V3 4/22/2019 9:01:33 AM V2 4/18/2019 6:59:38 PM V1 4/18/2019 4:49:42 PM
+	73415 V4 4/23/2019 8:02:57 PM V3 4/22/2019 9:01:33 AM V2 4/18/2019 6:59:38 PM V1 4/18/2019 4:49:42 PM
 #CE
 
 Func CKforLevelChange()
@@ -1256,21 +1292,21 @@ EndFunc   ;==>EdSaveLevel
 #CE
 
 Func ListLevel()
-	Local $hlv, $hOut, $x, $y, $a, $FileName, $aPos, $aMyDate, $aMyTime, $fSkip
+	Local $hlv, $hOut, $x, $y, $a, $filename, $aPos, $aMyDate, $aMyTime, $fSkip
 
 	$hOut = FileOpen(@ScriptDir & "\ListLevel.txt", $FO_OVERWRITE)
 	$fSkip = False
 
 	For $x = 0 To 99
 		If $x < 10 Then
-			$FileName = "Level0" & $x & ".lvl"
+			$filename = "Level0" & $x & ".lvl"
 		Else
-			$FileName = "Level" & $x & ".lvl"
+			$filename = "Level" & $x & ".lvl"
 		EndIf
 
-		If FileExists(@ScriptDir & "\Levels\" & $FileName) = 1 Then
+		If FileExists(@ScriptDir & "\Levels\" & $filename) = 1 Then
 
-			$hlv = FileOpen(@ScriptDir & "\Levels\" & $FileName, $FO_BINARY)
+			$hlv = FileOpen(@ScriptDir & "\Levels\" & $filename, $FO_BINARY)
 			If $hlv <> -1 Then
 				FileChangeDir(@ScriptDir)
 
@@ -1296,17 +1332,17 @@ Func ListLevel()
 				If $g_GameTitle == "DELETE" Then
 					$fDelete = True
 					$sDelete = @TAB & @TAB & @TAB & @TAB & @TAB & " Level was Deleted."
-					$a = FileDelete(@ScriptDir & "\Levels\" & $FileName)
+					$a = FileDelete(@ScriptDir & "\Levels\" & $filename)
 					If $a = 0 Then
-						MsgBox(0, "File Delete error", @ScriptDir & "\Levels\" & $FileName & "fail to delete!")
+						MsgBox(0, "File Delete error", @ScriptDir & "\Levels\" & $filename & "fail to delete!")
 					EndIf
 				EndIf
 
 				If $g_GameDate = 0 Then
-					FileWriteLine($hOut, $FileName & ": " & $g_GameTitle & $sDelete)
+					FileWriteLine($hOut, $filename & ": " & $g_GameTitle & $sDelete)
 				Else
 					$a = Trim(StringMid($g_GameDate, 3, 2)) & "/" & Trim(StringMid($g_GameDate, 5, 2)) & "/20" & StringLeft($g_GameDate, 2)
-					FileWriteLine($hOut, $FileName & ": " & $g_GameTitle & " -- " & $a & $sDelete)
+					FileWriteLine($hOut, $filename & ": " & $g_GameTitle & " -- " & $a & $sDelete)
 				EndIf
 				$fSkip = True
 			EndIf
@@ -1326,7 +1362,7 @@ Func ListLevel()
 
 EndFunc   ;==>ListLevel
 #CS INFO
-	133451 V3 4/23/2019 12:08:13 PM V2 4/22/2019 9:01:33 AM V1 4/3/2019 2:19:42 AM
+	134027 V4 4/23/2019 8:02:57 PM V3 4/23/2019 12:08:13 PM V2 4/22/2019 9:01:33 AM V1 4/3/2019 2:19:42 AM
 #CE
 
 Func EdEdLoadLevel() ; called thru Controls button
@@ -1341,7 +1377,7 @@ EndFunc   ;==>EdEdLoadLevel
 Func EdLoadBak() ;called thru Bak restore
 	; Problem Only show Current level backups
 	;Problem  Must keep current level filename
-	Local $FileName, $FileBak, $sFilter, $x
+	Local $filename, $FileBak, $sFilter, $x
 
 	If $g_FileName = "" Then
 		MsgBox($MB_TOPMOST, "Restore lever", "Filename not set, Load a level")
@@ -1356,52 +1392,52 @@ Func EdLoadBak() ;called thru Bak restore
 
 	$FileBak = $g_FileName
 
-	$FileName = FileOpenDialog("Load Level", @ScriptDir & "\Levels\Bak", "Level (" & $sFilter & "*.lvl)", "", $FD_FILEMUSTEXIST)
+	$filename = FileOpenDialog("Load Level", @ScriptDir & "\Levels\Bak", "Level (" & $sFilter & "*.lvl)", "", $FD_FILEMUSTEXIST)
 	If @error <> 0 Then
 		Return
 	EndIf
-	EdLoadLevelDo($FileName)
+	EdLoadLevelDo($filename)
 	$g_GameChanged = True
 	$g_FileName = $FileBak
 
 EndFunc   ;==>EdLoadBak
 #CS INFO
-	55639 V1 4/22/2019 9:01:33 AM
+	55831 V2 4/23/2019 8:02:57 PM V1 4/22/2019 9:01:33 AM
 #CE
 
 Func EdLoadLevel() ; called thru  EdEdLoadLevel or Demo
-	Local $FileName
+	Local $filename
 
 	If $g_fEditDemo = False Then
-		$FileName = FileOpenDialog("Load Level", @ScriptDir & "\Levels\", "Level (*.lvl)", "", $FD_FILEMUSTEXIST)
+		$filename = FileOpenDialog("Load Level", @ScriptDir & "\Levels\", "Level (*.lvl)", "", $FD_FILEMUSTEXIST)
 		If @error = 1 Then
-			$FileName = ""
+			$filename = ""
 			Return
 		EndIf
 	Else
-		$FileName = $g_FileName
+		$filename = $g_FileName
 	EndIf
-	$g_FileName = $FileName
-	EdLoadLevelDo($FileName)
+	$g_FileName = $filename
+	EdLoadLevelDo($filename)
 
 EndFunc   ;==>EdLoadLevel
 #CS INFO
-	27818 V1 4/22/2019 9:01:33 AM
+	28202 V2 4/23/2019 8:02:57 PM V1 4/22/2019 9:01:33 AM
 #CE
 
-Func EdLoadLevelDo($FileName)
+Func EdLoadLevelDo($filename)
 	Local $hlv, $x, $y, $a, $PleaseWait, $aPos, $aMyDate, $aMyTime, $sName
 
-	$hlv = FileOpen($FileName, $FO_BINARY)
+	$hlv = FileOpen($filename, $FO_BINARY)
 	If $hlv = -1 Then
-		MsgBox(1, "Level error: ", $FileName & " Level did not open ")
+		MsgBox(1, "Level error: ", $filename & " Level did not open ")
 		Return
 	EndIf
 
 	FileChangeDir(@ScriptDir)
 
-	$x = StringInStr($FileName, "\", 0, -1)
-	$sName = StringMid($FileName, $x + 1)
+	$x = StringInStr($filename, "\", 0, -1)
+	$sName = StringMid($filename, $x + 1)
 	; Bak LevelXX --Data.lvl  normal LevelXX.lvd
 	;        1234567
 	$sName = StringLeft($sName, 7)
@@ -1462,12 +1498,12 @@ Func EdLoadLevelDo($FileName)
 
 EndFunc   ;==>EdLoadLevelDo
 #CS INFO
-	117886 V12 4/22/2019 9:01:33 AM V11 4/2/2019 12:11:02 AM V10 3/31/2019 4:59:34 PM V9 3/30/2019 6:02:52 PM
+	118206 V13 4/23/2019 8:02:57 PM V12 4/22/2019 9:01:33 AM V11 4/2/2019 12:11:02 AM V10 3/31/2019 4:59:34 PM
 #CE
 
 ;Load Level
 ; to remove Run again
-Func SayLoadLevel($Mode = 0, $Screen = 0, $FileName = "") ;Screen that it going to be in,  DONE  blank.
+Func SayLoadLevel($Mode = 0, $Screen = 0, $filename = "") ;Screen that it going to be in,  DONE  blank.
 	;Mode 1 = loading level
 	;Move 2 = Clearing board (Edit only)
 
@@ -1489,7 +1525,7 @@ Func SayLoadLevel($Mode = 0, $Screen = 0, $FileName = "") ;Screen that it going 
 			Case 1
 				GUICtrlCreateLabel("Loading Level", 8, 8, 170, 25, $SS_CENTER)
 				GUICtrlSetFont(-1, 12, 800, 0, "Arial Black")
-				GUICtrlCreateLabel($FileName, 8, 38, 170, 25, $SS_CENTER)
+				GUICtrlCreateLabel($filename, 8, 38, 170, 25, $SS_CENTER)
 				GUICtrlSetFont(-1, 12, 400, 0, "Arial")
 
 			Case 2
@@ -1505,7 +1541,7 @@ Func SayLoadLevel($Mode = 0, $Screen = 0, $FileName = "") ;Screen that it going 
 
 EndFunc   ;==>SayLoadLevel
 #CS INFO
-	77551 V4 4/2/2019 12:11:02 AM V3 3/31/2019 4:59:34 PM V2 3/15/2019 8:15:41 PM V1 3/11/2019 2:08:18 AM
+	77679 V5 4/23/2019 8:02:57 PM V4 4/2/2019 12:11:02 AM V3 3/31/2019 4:59:34 PM V2 3/15/2019 8:15:41 PM
 #CE
 
 Func EditStatus()
@@ -1953,12 +1989,14 @@ Func GameScreen()
 		EndIf
 
 		;Level complete.
-		If $g_fLevelComplete Then
+		If $g_fEditDemo = False Then
+			If $g_fLevelComplete Then
 
-			If $g_irLevel < 5 Then
-				SkipPassCode($g_irLevel)
+				If $g_irLevel < 5 Then
+					SkipPassCode($g_irLevel)
+				EndIf
+				$g_irLevel += 1
 			EndIf
-			$g_irLevel += 1
 		EndIf
 	WEnd
 
@@ -1968,7 +2006,7 @@ Func GameScreen()
 
 EndFunc   ;==>GameScreen
 #CS INFO
-	213659 V15 4/18/2019 4:49:42 PM V14 3/30/2019 6:02:52 PM V13 3/21/2019 4:38:57 PM V12 3/17/2019 2:57:13 AM
+	216354 V16 4/23/2019 8:02:57 PM V15 4/18/2019 4:49:42 PM V14 3/30/2019 6:02:52 PM V13 3/21/2019 4:38:57 PM
 #CE
 
 Func SkipPassCode($Lv)
@@ -3086,27 +3124,31 @@ EndFunc   ;==>OneOnlyRemove
 Func TurnButtonOn($a)
 	Local $z
 
-	For $z = 0 To 24
-		If $Which1[$z][1] = $a Then
-			GUICtrlSetData($b[$z], $Which1[$z][0])
-			GUICtrlSetState($b[$z], $GUI_SHOW + $GUI_ENABLE)
-		EndIf
-	Next
+	If $g_WhichCur = 1 Then
+		For $z = 0 To 24
+			If $g_Which1[$z][1] = $a Then
+				GUICtrlSetData($b[$z], $g_Which1[$z][0])
+				GUICtrlSetState($b[$z], $GUI_SHOW + $GUI_ENABLE)
+			EndIf
+		Next
+	EndIf
 EndFunc   ;==>TurnButtonOn
 #CS INFO
-	14958 V1 3/31/2019 4:59:34 PM
+	17523 V2 4/23/2019 8:02:57 PM V1 3/31/2019 4:59:34 PM
 #CE
 
 Func TurnButtonOff($a)
-	For $z = 0 To 24
-		If $Which1[$z][1] = $a Then
-			GUICtrlSetState($b[$z], $GUI_HIDE)
-			ExitLoop
-		EndIf
-	Next
+	If $g_WhichCur = 1 Then
+		For $z = 0 To 24
+			If $g_Which1[$z][1] = $a Then
+				GUICtrlSetState($b[$z], $GUI_HIDE)
+				ExitLoop
+			EndIf
+		Next
+	EndIf
 EndFunc   ;==>TurnButtonOff
 #CS INFO
-	11381 V1 3/31/2019 4:59:34 PM
+	13748 V2 4/23/2019 8:02:57 PM V1 3/31/2019 4:59:34 PM
 #CE
 
 ;~~
@@ -3340,4 +3382,4 @@ EndFunc   ;==>Trim
 	4672 V1 3/27/2019 9:45:39 PM
 #CE
 
-;~T ScriptFunc.exe V0.53 17 Apr 2019 - 4/23/2019 12:08:13 PM
+;~T ScriptFunc.exe V0.53 17 Apr 2019 - 4/23/2019 8:02:57 PM
