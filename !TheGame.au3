@@ -6,7 +6,7 @@
 #EndRegion ;**** Directives created by AutoIt3Wrapper_GUI ****
 AutoItSetOption("MustDeclareVars", 1)
 
-Global $ver = "0.89 23 Apr 19 You button coming on at wrong time"
+Global $ver = "0.91 25 Apr 19 After last level do random levels."
 
 Global $_debug = False
 Global $TESTING = False
@@ -18,6 +18,9 @@ Global $TESTING = False
 	Version 3, 29 June 2007
 
 	to do: see bottom of instruction.txt
+
+	0.91 25 Apr 19 After last level do random levels.
+	0.90 24 Apr 19 Flip - Level does start until you move
 	0.89 23 Apr 19 You button coming on at wrong time
 	0.88 23 Apr 19 New level fails
 	0.87 23 Apr 19 Hide buttons you can't use before loading a level or adding a new level name.
@@ -183,6 +186,8 @@ Global $TESTING = False
 Global $g_FileName = ""
 
 Global $g_ExitGameScreen = False
+Global $g_fRandomOn = False
+Global $g_iRanLevelCnt
 
 ;Game
 Global $g_GameTitle = ""
@@ -493,13 +498,17 @@ Func UpDateHiScore()
 
 		$g_aHiScore[9][0] = $g_iScore
 		$g_aHiScore[9][1] = _Now()
-		$g_aHiScore[9][2] = $g_irLevel
+		If $g_fRandomOn Then
+			$g_aHiScore[9][2] = "R" & $g_iRanLevelCnt
+		Else
+			$g_aHiScore[9][2] = $g_irLevel
+		EndIf
 		_ArraySort($g_aHiScore, 1, 1, 9)
 		SaveHiScore()
 	EndIf
 EndFunc   ;==>UpDateHiScore
 #CS INFO
-	22628 V2 3/17/2019 2:57:13 AM V1 2/25/2019 1:58:55 AM
+	28348 V3 4/25/2019 11:42:38 PM V2 3/17/2019 2:57:13 AM V1 2/25/2019 1:58:55 AM
 #CE
 
 ; Read HighScore
@@ -580,7 +589,6 @@ EndFunc   ;==>Instructions
 	9614 V3 4/23/2019 12:08:13 PM V2 2/24/2019 6:05:52 PM V1 2/24/2019 10:03:19 AM
 #CE
 
-;~~
 Func EditScreen()
 	;Edit Screen Button
 	Local $iColumn, $fFac, $iColumnHalf, $iHalf, $iW, $string, $flag
@@ -697,7 +705,7 @@ Func EditScreen()
 		$string &= ",10,Lift,8,11,Ride Down,9,12,Missile Off,7,13,Missile,31,14,Hidden,17"
 		$string &= ",15,Horz Right,11,16,Horz Left,13,18,Hid move,12,17,Vertical,15"
 		SetupWhich($g_Which1, $string)
-		$string = "0,Load,EdEdLoadLevel, 11,Save,EdSaveLevel,9,Clear,EdClearScreen,20,Demo,StrDemo,4,New,NewLevel,19,Edit Title,EditLevelTitle,24,List Levels,ListLevel,23,Load Backup,EdLoadBak"
+		$string = "0,Load,EdEdLoadLevel, 11,Save,EdSaveLevel,9,Clear,EdClearScreen,20,Demo,StrDemo,4,New,NewLevel,18,Flip,FlipLevel,19,Edit Title,EditLevelTitle,24,List Levels,ListLevel,23,Load Backup,EdLoadBak"
 		SetupWhich($g_Which2, $string)
 		;_ArrayDisplay($g_Which0)
 		;_ArrayDisplay($g_Which1)
@@ -1042,17 +1050,15 @@ Func EditScreen()
 
 EndFunc   ;==>EditScreen
 #CS INFO
-	1017125 V22 4/23/2019 8:02:57 PM V21 4/22/2019 9:01:33 AM V20 4/18/2019 4:49:42 PM V19 4/3/2019 2:19:42 AM
+	1018656 V23 4/24/2019 11:40:11 PM V22 4/23/2019 8:02:57 PM V21 4/22/2019 9:01:33 AM V20 4/18/2019 4:49:42 PM
 #CE
 
 Func NewLevel()
-	;	@workingdir
 	Local $sLevelPath, $aLevels, $s, $filename
 	Local $iMsgBoxAnswer
 	Local $flag = False
 
 	$sLevelPath = @WorkingDir & "\levels\"
-	;Local $aLevels = _FileListToArray($sLevelPath, "*.lvl", $FLTA_FILES)
 
 	For $z = 1 To 99 ; 0 demo
 		If $z < 10 Then
@@ -1088,7 +1094,7 @@ Func NewLevel()
 
 EndFunc   ;==>NewLevel
 #CS INFO
-	73415 V4 4/23/2019 8:02:57 PM V3 4/22/2019 9:01:33 AM V2 4/18/2019 6:59:38 PM V1 4/18/2019 4:49:42 PM
+	66736 V6 4/25/2019 11:42:38 PM V5 4/24/2019 11:40:11 PM V4 4/23/2019 8:02:57 PM V3 4/22/2019 9:01:33 AM
 #CE
 
 Func CKforLevelChange()
@@ -1169,38 +1175,60 @@ EndFunc   ;==>StrDemo
 	8429 V2 4/2/2019 12:11:02 AM V1 3/25/2019 9:26:18 PM
 #CE
 
-#cs
-	; one time use
-	Func ExpandLevel() ;One time use
-	Local $y, $x, $z, $a, $rr
-	$z = 3
-	For $x = 77 To 1 Step -1
-	For $y = 1 To 16
-	$g_aMap[$x + $z][$y] = $g_aMap[$x][$y]
-	Next
-	If $x = 61 Or $x = 41 Or $x = 21 Then
-	$z -= 1
-	For $y = 1 To 16
-	$g_aMap[$x + $z][$y] = 136
-	Next
+Func FlipLevel()
+	Local $ans
+	Local $s, $sDrive = "", $sDir = "", $sFileName = "", $sExtension = ""
+	Local $y, $x, $xo, $save
+	Local $sLevelPath, $aLevels, $s, $filename
+	Local $iMsgBoxAnswer, $a
+	Local $flag = False
+
+	_PathSplit($g_FileName, $sDrive, $sDir, $sFileName, $sExtension)
+
+	$ans = MsgBox($MB_TOPMOST + $MB_YESNO, "Flip level", "Flip level: Make left side the right side " & $sFileName)
+	If $ans = $IDYES Then
+
+		For $x = 1 To 40
+			$xo = 81 - $x
+			For $y = 1 To 20
+				$save = $g_aMap[$x][$y]
+				$g_aMap[$x][$y] = $g_aMap[$xo][$y]
+				$g_aMap[$xo][$y] = $save
+			Next
+		Next
+
+		;Find new level
+		$sLevelPath = @WorkingDir & "\levels\"
+		;Local $aLevels = _FileListToArray($sLevelPath, "*.lvl", $FLTA_FILES)
+
+		Local $found = False
+		For $z = 1 To 99 ; 0 demo
+			If $z < 10 Then
+				$s = "0" & String($z)
+			Else
+				$s = String($z)
+			EndIf
+			$filename = "Level" & $s & ".lvl"
+			If FileExists(@WorkingDir & "\levels\" & $filename) = 0 Then ;not exist
+				$found = True
+				ExitLoop
+			EndIf
+		Next
+		If $found = False Then
+			MsgBox(0, "Opps", "No free levels")
+			Exit
+		EndIf
+
+		$g_FileName = @WorkingDir & "\levels\" & "Level" & $s & ".lvl"
+		$g_GameTitle = "Flip " & $sFileName & " on " & _NowDate()
+
+		EdSaveLevel()
+		EdLoadLevelDo($g_FileName)
 	EndIf
-	Next
-	$z = 4
-	For $y = 16 To 1 Step -1
-	For $x = 1 To 80
-	$g_aMap[$x][$y + $z] = $g_aMap[$x][$y]
-	Next
-	If $y = 4 Or $y = 7 Or $y = 10 Or $y = 13 Then
-	$z -= 1
-	For $x = 1 To 80
-	$g_aMap[$x][$y + $z] = 136
-	Next
-	EndIf
-	Next
-	EdSaveLevel()
-	EdLoadLevel()
-	EndFunc   ;==>ExpandLevel
-#ce
+EndFunc   ;==>FlipLevel
+#CS INFO
+	86829 V1 4/24/2019 11:40:11 PM
+#CE
 
 ;			Keep  2 days of edit.  Then the last one per day up  to 30 days.
 ;           Backup format:  LevelXX YYMMDD-hrmnss.lvl
@@ -1210,12 +1238,15 @@ Func BackupSave() ; from ScriptBackup.au3
 	_PathSplit($g_FileName, $sDrive, $sDir, $sFileName, $sExtension)
 	$s = $sFileName & "-" & @YEAR & "-" & @MON & "-" & @MDAY & "-" & @HOUR & "-" & @MIN & "-" & @SEC & $sExtension
 
-	FileCopy($g_FileName, @WorkingDir & "\Levels\Bak\" & $s, $FC_OVERWRITE + $FC_CREATEPATH)
-	;problem FileCopy does not change modified date.  Do delete days may delete after 0 days.
-	FileSetTime(@WorkingDir & "\Levels\Bak\" & $s, "") ; Set modified date to current time
+	If FileExists($g_FileName) = 1 Then
+
+		FileCopy($g_FileName, @WorkingDir & "\Levels\Bak\" & $s, $FC_OVERWRITE + $FC_CREATEPATH)
+		;problem FileCopy does not change modified date.  Do delete days may delete after 0 days.
+		FileSetTime(@WorkingDir & "\Levels\Bak\" & $s, "") ; Set modified date to current time
+	EndIf
 EndFunc   ;==>BackupSave
 #CS INFO
-	41606 V1 4/22/2019 9:01:33 AM
+	44852 V2 4/24/2019 11:40:11 PM V1 4/22/2019 9:01:33 AM
 #CE
 
 Func BackupClear() ;		from ScriptBackup.au3
@@ -1243,7 +1274,6 @@ EndFunc   ;==>BackupClear
 	44422 V1 4/22/2019 9:01:33 AM
 #CE
 
-;~~
 Func EdSaveLevel()
 	Local $e, $hlv, $x, $y, $aMyDate, $aMyTime
 
@@ -1563,7 +1593,6 @@ EndFunc   ;==>EditStatus
 	25794 V5 3/31/2019 4:59:34 PM V4 3/30/2019 6:02:52 PM V3 3/26/2019 8:43:36 PM V2 2/24/2019 6:05:52 PM
 #CE
 
-;~~
 ;$a >0 return text for $a  -1 use aMap location at   -2  display cur
 Func EditObject($a)
 	Local $tx, $vx, $vy
@@ -1771,8 +1800,7 @@ Func StartScreen()
 		;GUISetState(@SW_SHOW, $g_ScreenStart)
 		$iLine = 10
 
-		;$u_Str1 = GUICtrlCreateLabel("Main Menu", 0, $iLine, $c_iSSwidth, 48, $SS_CENTER) ; Height is twice font size     <<< when done use this
-		$u_Str1 = GUICtrlCreateLabel("This is NOT COMPLETED.", 0, $iLine, $c_iSSwidth, 96, $SS_CENTER) ; Height is twice font size
+		$u_Str1 = GUICtrlCreateLabel("The Game.", 0, $iLine, $c_iSSwidth, 96, $SS_CENTER) ; Height is twice font size
 		GUICtrlSetFont($u_Str1, 24, 400, 0, "MS Sans Serif")
 		;$iLine += 48   <<< when done use this
 		$iLine += 48 + 49
@@ -1818,7 +1846,7 @@ Func StartScreen()
 		$Action1 = GUICtrlCreateLabel('1. Start Game', $c_iSSleft, $iLine, $c_iSSwidth, 24) ; Height is twice font size
 		GUICtrlSetFont(-1, 12, 400, 0, "MS Sans Serif")
 		$iLine += 24
-		$Action2 = GUICtrlCreateLabel('2. Demo Level', $c_iSSleft, $iLine, $c_iSSwidth, 24) ; Height is twice font size
+		$Action2 = GUICtrlCreateLabel('2. Demo Level - do first', $c_iSSleft, $iLine, $c_iSSwidth, 24) ; Height is twice font size
 		GUICtrlSetFont(-1, 12, 400, 0, "MS Sans Serif")
 		$iLine += 24
 		$Action3 = GUICtrlCreateLabel('3. Instructions', $c_iSSleft, $iLine, $c_iSSwidth, 24) ; Height is twice font size
@@ -1869,7 +1897,7 @@ Func StartScreen()
 	Return $g_iSSkey
 EndFunc   ;==>StartScreen
 #CS INFO
-	314502 V10 4/23/2019 2:50:23 AM V9 4/18/2019 4:49:42 PM V8 3/30/2019 6:02:52 PM V7 3/17/2019 2:57:13 AM
+	304245 V11 4/25/2019 11:42:38 PM V10 4/23/2019 2:50:23 AM V9 4/18/2019 4:49:42 PM V8 3/30/2019 6:02:52 PM
 #CE
 
 ;-----------------------------------------
@@ -1995,7 +2023,10 @@ Func GameScreen()
 				If $g_irLevel < 5 Then
 					SkipPassCode($g_irLevel)
 				EndIf
-				$g_irLevel += 1
+;~~
+				;Find next level, if no more level pick a random level to play - until user runs out of lives.
+				NextPlayLevel()
+
 			EndIf
 		EndIf
 	WEnd
@@ -2006,7 +2037,69 @@ Func GameScreen()
 
 EndFunc   ;==>GameScreen
 #CS INFO
-	216354 V16 4/23/2019 8:02:57 PM V15 4/18/2019 4:49:42 PM V14 3/30/2019 6:02:52 PM V13 3/21/2019 4:38:57 PM
+	224847 V17 4/25/2019 11:42:38 PM V16 4/23/2019 8:02:57 PM V15 4/18/2019 4:49:42 PM V14 3/30/2019 6:02:52 PM
+#CE
+
+;improvement local static array of which levels active on first pass, after that search them.
+Func NextPlayLevel()
+	Local $filename, $s, $z, $cnt
+	Local $sLevelPath = @WorkingDir & "\levels\"
+	Local Static $ls_iRandomCnt = 0
+
+	If $g_fRandomOn = False Then ;do normal
+		For $z = $g_irLevel + 1 To 99 ; 0 demo
+			If $z < 10 Then
+				$s = "0" & String($z)
+			Else
+				$s = String($z)
+			EndIf
+			$filename = "Level" & $s & ".lvl"
+
+			If FileExists(@WorkingDir & "\levels\" & $filename) = 1 Then ;exist
+				$g_irLevel = $z
+				Return
+			EndIf
+		Next
+		Pause("No more levels - Start random")
+		$ls_iRandomCnt = 0
+		For $z = 0 To 99 ; 0 demo include
+			If $z < 10 Then
+				$s = "0" & String($z)
+			Else
+				$s = String($z)
+			EndIf
+			$filename = "Level" & $s & ".lvl"
+			If FileExists(@WorkingDir & "\levels\" & $filename) = 1 Then ;exist
+				$ls_iRandomCnt += 1
+			EndIf
+		Next
+	EndIf
+	;Start Random
+	$g_fRandomOn = True
+	$g_iRanLevelCnt += 1
+
+	$cnt = Random(0, $ls_iRandomCnt, 1) ;return int
+	For $z = 0 To 99 ; 0 demo include
+		If $z < 10 Then
+			$s = "0" & String($z)
+		Else
+			$s = String($z)
+		EndIf
+		$filename = "Level" & $s & ".lvl"
+		If FileExists(@WorkingDir & "\levels\" & $filename) = 1 Then ;exist
+
+			If $cnt = 0 Then ;found
+				$g_irLevel = $z
+				Return
+			EndIf
+			$cnt -= 1
+		EndIf
+	Next
+	Pause("Should never be here.")
+
+EndFunc   ;==>NextPlayLevel
+#CS INFO
+	83020 V1 4/25/2019 11:42:38 PM
 #CE
 
 Func SkipPassCode($Lv)
@@ -2170,7 +2263,7 @@ EndFunc   ;==>Collision
 
 ;=====================================================
 Func Game($Level)
-	Local $flag, $y, $NextMsg
+	Local $flag, $y, $NextMsg, $fUmoved
 
 	;Game Loop
 	DisplayStatus(98)
@@ -2199,6 +2292,12 @@ Func Game($Level)
 	Local $aAccelKey[][] = [["{RIGHT}", $g_cGright], ["{LEFT}", $g_cGleft], ["c", $g_cGquit], ["{DOWN}", $g_cGdown], ["{ESC}", $g_cGdie]]
 	GUISetAccelerators($aAccelKey, $g_ScreenGame)
 
+	$fUmoved = False
+	;$fUmoved = True
+	Do
+		$y = GUIGetMsg()
+	Until $y = 0
+
 	While 1
 		If $g_iDead > 0 Then
 			ExitLoop ;Exit game and to lives count down
@@ -2225,11 +2324,13 @@ Func Game($Level)
 					Until GUIGetMsg() <> $g_cGleft
 					$g_iDirection = "L"
 					$g_cKeyEvent = True
+					$fUmoved = True
 				Case $g_cGright
 					Do
 					Until GUIGetMsg() <> $g_cGright
 					$g_iDirection = "R"
 					$g_cKeyEvent = True
+					$fUmoved = True
 				Case $g_cGquit
 					$g_ExitGameScreen = True
 					ExitLoop
@@ -2238,6 +2339,7 @@ Func Game($Level)
 					Until GUIGetMsg() <> $g_cGdown
 					$g_iDirection = "D"
 					$g_cKeyEvent = True
+					$fUmoved = True
 				Case $g_cGdie
 					Do
 					Until GUIGetMsg() <> $g_cGdie
@@ -2252,19 +2354,21 @@ Func Game($Level)
 			EndIf
 		EndIf
 
-		MoveYou()
-		If $g_ExitGameScreen Then
-			ExitLoop
-		EndIf
-		MoveObj()
-		$flag = True
-		While $flag
-			$flag = MoveYouDown()
-			If $flag Then
-				Sleep(1) ;drop
+		If $fUmoved Then
+			MoveYou()
+			If $g_ExitGameScreen Then
+				ExitLoop
 			EndIf
-		WEnd
-		ShowBlock()
+			MoveObj()
+			$flag = True
+			While $flag
+				$flag = MoveYouDown()
+				If $flag Then
+					Sleep(1) ;drop
+				EndIf
+			WEnd
+			ShowBlock()
+		EndIf
 		Tick()
 	WEnd
 	GUISetAccelerators($g_ScreenGame, $g_ScreenGame)
@@ -2272,7 +2376,7 @@ Func Game($Level)
 
 EndFunc   ;==>Game
 #CS INFO
-	133674 V14 4/3/2019 2:19:42 AM V13 3/28/2019 9:21:27 PM V12 3/17/2019 2:57:13 AM V11 3/17/2019 1:23:00 AM
+	144679 V15 4/25/2019 11:42:38 PM V14 4/3/2019 2:19:42 AM V13 3/28/2019 9:21:27 PM V12 3/17/2019 2:57:13 AM
 #CE
 
 Func Tick() ; ave time in 50ms  per loop  + 100ms
@@ -3095,7 +3199,6 @@ EndFunc   ;==>DoDoor
 	6396 V2 3/11/2019 6:15:52 PM V1 2/24/2019 6:05:52 PM
 #CE
 
-;~~
 Func OneOnlyRemove($a)
 	If $g_fEditMode Then
 		Switch $a
@@ -3151,7 +3254,6 @@ EndFunc   ;==>TurnButtonOff
 	13748 V2 4/23/2019 8:02:57 PM V1 3/31/2019 4:59:34 PM
 #CE
 
-;~~
 Func CkobjOneOnly($a) ; Run after storing value into map
 	If $g_fEditMode Then
 		Switch $a
@@ -3203,7 +3305,6 @@ EndFunc   ;==>CkobjOneOnly
 	87250 V1 3/31/2019 4:59:34 PM
 #CE
 
-;~~
 Func ShowObject($x, $y, $a)
 	Local $Color, $xx, $yy, $e
 	Local $vx, $vy
@@ -3382,4 +3483,4 @@ EndFunc   ;==>Trim
 	4672 V1 3/27/2019 9:45:39 PM
 #CE
 
-;~T ScriptFunc.exe V0.53 17 Apr 2019 - 4/23/2019 8:02:57 PM
+;~T ScriptFunc.exe V0.53 17 Apr 2019 - 4/25/2019 11:42:38 PM

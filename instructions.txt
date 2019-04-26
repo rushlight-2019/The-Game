@@ -1,4 +1,4 @@
-The Game  version 0.89
+The Game  version 0.91
 
 ----------------------------
 Game used a 200ms timing loop.  My Win 7 uses 40-50 ms per loop. My Win 10 about 120-170ms
@@ -26,6 +26,8 @@ Backup days:  Edits are backup X days. Default 2, can be set 1-10
 Game: Keyboad only. Mouse can be used to activate C and Esc.
 C = Cancel Game back to start Menu. No high score.
 ESC = Will kill you if you get stuck. Some level have rooms you can't leave
+
+The level does not start until YOU move.
 
 Starts at level 1. 
 
