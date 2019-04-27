@@ -1,4 +1,5 @@
-The Game  version 0.92
+The Game  version 0.93
+Game done, just looking for not problems.
 
 ----------------------------
 Game used a 200ms timing loop.  My Win 7 uses 40-50 ms per loop. My Win 10 about 120-170ms
@@ -48,6 +49,7 @@ Vertical moving blocks. Triangle:  You can ride down but not up. Don't run into 
 Horizonal moving blocks. + - :  Deadly if you run to them or them into you.  
 
 Hidden area. You need the torch to see. There moving hidden horizonal blocks.
+	Hidden Horizonal block direction set randomly.
 
 ~~ you can ride down. They DON'T go back up.
 
@@ -136,4 +138,3 @@ Edit:
 
 
 Pictures update
-Lift
