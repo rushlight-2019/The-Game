@@ -1,4 +1,4 @@
-The Game  version 0.91
+The Game  version 0.92
 
 ----------------------------
 Game used a 200ms timing loop.  My Win 7 uses 40-50 ms per loop. My Win 10 about 120-170ms
@@ -56,6 +56,8 @@ Missile: You seeking. Gold Star:  Turn off with the switch. Get on top of switch
 Key, Torch which you should pickup. (Get on top press down)
 
 Hidden pieces (need torch) and a Door (need key).
+
+Push Pop:  Press down and go to the other Push Pop if the location is empty
 
 
 --------------------------------------------------------
@@ -127,8 +129,8 @@ Startup:
 Setting:
 
 Game:
-(New) transport.
-After last level do random levels.
+(New) Exit
+
 
 Edit:
 

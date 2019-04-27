@@ -6,10 +6,10 @@
 #EndRegion ;**** Directives created by AutoIt3Wrapper_GUI ****
 AutoItSetOption("MustDeclareVars", 1)
 
-Global $ver = "0.91 25 Apr 19 After last level do random levels."
+Global $ver = "0.92 26 Apr 19 PushPop object (2)"
 
 Global $_debug = False
-Global $TESTING = False
+Global $TESTING = @Compiled = 0
 
 #cs ----------------------------------------------------------------------------
 
@@ -19,6 +19,7 @@ Global $TESTING = False
 
 	to do: see bottom of instruction.txt
 
+	0.92 26 Apr 19 PushPop object (2)
 	0.91 25 Apr 19 After last level do random levels.
 	0.90 24 Apr 19 Flip - Level does start until you move
 	0.89 23 Apr 19 You button coming on at wrong time
@@ -133,6 +134,7 @@ Global $TESTING = False
 	7 ;Tap tapopen
 	8 ;Lift
 	9 ; ~
+	10 PushPop
 
 	11 ;Hor Right
 	12   ;Hor hidden block
@@ -247,6 +249,9 @@ Global Static $NULL = 255
 Global Static $YOU = 1
 Global $g_iYouX = 0
 Global $g_iYouY = 0
+
+Global $g_aPushPop[5] ;0 count1 X,Y, 2nd X,Y
+$g_aPushPop[0] = 0
 
 Global Static $EMPTY = 0
 
@@ -514,7 +519,7 @@ EndFunc   ;==>UpDateHiScore
 ; Read HighScore
 Func ReadIni()
 	Local $i
-	Local $a, $c ; temp array or not
+	Local $a, $c
 
 	$g_iBakdays = Int(IniRead($g_cSetting, "General", "BackupDays", 2))
 
@@ -703,7 +708,7 @@ Func EditScreen()
 
 		$string = "0,Empty,0,22,You,1,4,Diamond,2,5,Water,6,7,Key,3,9,Torch,4,8,Door,5" ;,1,Blue,128,2,Red,134,3,Green,129"
 		$string &= ",10,Lift,8,11,Ride Down,9,12,Missile Off,7,13,Missile,31,14,Hidden,17"
-		$string &= ",15,Horz Right,11,16,Horz Left,13,18,Hid move,12,17,Vertical,15"
+		$string &= ",15,Horz Right,11,16,Horz Left,13,19,Hid move,12,17,Vertical,15,18,PushPop,10"
 		SetupWhich($g_Which1, $string)
 		$string = "0,Load,EdEdLoadLevel, 11,Save,EdSaveLevel,9,Clear,EdClearScreen,20,Demo,StrDemo,4,New,NewLevel,18,Flip,FlipLevel,19,Edit Title,EditLevelTitle,24,List Levels,ListLevel,23,Load Backup,EdLoadBak"
 		SetupWhich($g_Which2, $string)
@@ -847,6 +852,10 @@ Func EditScreen()
 										EndIf
 									Case 4
 										If $g_fEdTorch Then
+											GUICtrlSetState($b[$z], $GUI_HIDE)
+										EndIf
+									Case 10
+										If $g_aPushPop[0] = 2 Then
 											GUICtrlSetState($b[$z], $GUI_HIDE)
 										EndIf
 								EndSwitch
@@ -1050,7 +1059,7 @@ Func EditScreen()
 
 EndFunc   ;==>EditScreen
 #CS INFO
-	1018656 V23 4/24/2019 11:40:11 PM V22 4/23/2019 8:02:57 PM V21 4/22/2019 9:01:33 AM V20 4/18/2019 4:49:42 PM
+	1026117 V24 4/26/2019 6:23:56 PM V23 4/24/2019 11:40:11 PM V22 4/23/2019 8:02:57 PM V21 4/22/2019 9:01:33 AM
 #CE
 
 Func NewLevel()
@@ -1396,9 +1405,9 @@ EndFunc   ;==>ListLevel
 #CE
 
 Func EdEdLoadLevel() ; called thru Controls button
-	;	If CKforLevelChange() Then
-	EdLoadLevel()
-	;	EndIf
+	If CKforLevelChange() Then
+		EdLoadLevel()
+	EndIf
 EndFunc   ;==>EdEdLoadLevel
 #CS INFO
 	10410 V2 4/22/2019 9:01:33 AM V1 4/2/2019 12:11:02 AM
@@ -1497,6 +1506,7 @@ Func EdLoadLevelDo($filename)
 	$g_fEdSwitch = False ;7
 	$g_fEdKey = False ;3
 	$g_fEdTorch = False ;4
+	$g_aPushPop[0] = 0
 
 	For $y = 1 To 20 ;$s_iMapSizeY
 		For $x = 1 To 80 ;$s_iMapSizeX
@@ -1514,6 +1524,9 @@ Func EdLoadLevelDo($filename)
 					$g_fEdKey = True
 				Case 4
 					$g_fEdTorch = True
+				Case 10
+					$g_aPushPop[0] += 1
+
 			EndSwitch
 		Next
 	Next
@@ -1528,7 +1541,7 @@ Func EdLoadLevelDo($filename)
 
 EndFunc   ;==>EdLoadLevelDo
 #CS INFO
-	118206 V13 4/23/2019 8:02:57 PM V12 4/22/2019 9:01:33 AM V11 4/2/2019 12:11:02 AM V10 3/31/2019 4:59:34 PM
+	122639 V14 4/26/2019 6:23:56 PM V13 4/23/2019 8:02:57 PM V12 4/22/2019 9:01:33 AM V11 4/2/2019 12:11:02 AM
 #CE
 
 ;Load Level
@@ -1591,93 +1604,6 @@ Func EditStatus()
 EndFunc   ;==>EditStatus
 #CS INFO
 	25794 V5 3/31/2019 4:59:34 PM V4 3/30/2019 6:02:52 PM V3 3/26/2019 8:43:36 PM V2 2/24/2019 6:05:52 PM
-#CE
-
-;$a >0 return text for $a  -1 use aMap location at   -2  display cur
-Func EditObject($a)
-	Local $tx, $vx, $vy
-
-	;EditObject(-2)
-	If $a = -2 Then
-		$vx = $g_iEdit_Xcur + $s_iMapOffsetX
-		$vy = $s_iMapSizeY - $g_iEdit_Ycur + $s_iMapOffsetY
-		GUICtrlSetImage($g_aEditMap[$vx][$vy], "Pic\Edit.jpg")
-	EndIf
-	If $a < 0 Then
-		$a = $g_aMap[$g_iEdit_Xcur][$g_iEdit_Ycur]
-	EndIf
-
-	$tx = ""
-	Switch $a
-		Case 0
-			$tx = "Empty"
-		Case 11 ;Hor Right
-			$tx = "Horz Right"
-		Case 13 ;Hor Left
-			$tx = "Horz Left"
-		Case 12 ;Hor Hid Right
-			$tx = "Horz Hidden"
-		Case 14 ;Hor Hid Left  ;9330 removed
-			$tx = "NOT USED"
-		Case 7 ;Missile on
-			$tx = "Missile On"
-		Case 30 ; Missile off
-			$tx = "Missile Off"
-		Case 15 ;Ver Block
-			$tx = "Vertical"
-			;Case 16 ;Ver Block
-			;	$tx = "VerticalHid"
-		Case 31
-			$tx = "Missile"
-		Case 128
-			$tx = "Blue"
-		Case 129
-			$tx = "Green"
-		Case 130
-			$tx = "Dark Blue"
-		Case 131
-			$tx = "Darkest Blue"
-		Case 132
-			$tx = "Dark Green"
-		Case 133
-			$tx = "Dark Red"
-		Case 134
-			$tx = "Red"
-		Case 135
-			$tx = "Earth"
-		Case 136
-			$tx = "Light Blue"
-		Case 5
-			$tx = "Door"
-		Case 8 ;lift
-			$tx = "Lift"
-		Case 9 ;Platform down
-			$tx = "Ride Down"
-		Case 2
-			$tx = "Diamond"
-		Case 1 ; You
-			$tx = "You"
-		Case 3
-			$tx = "Key"
-		Case 17
-			$tx = "Hidden Block"
-		Case 4
-			$tx = "Torch"
-		Case 6
-			$tx = "Water"
-		Case $NULL
-			$tx = "Nothing Selected"
-		Case 254
-			$tx = "White"
-	EndSwitch
-	If $tx = "" Then ;letter or error
-		$tx = "Letter " & Chr($a) & " " & $a
-	EndIf
-
-	Return $tx
-EndFunc   ;==>EditObject
-#CS INFO
-	91040 V6 3/31/2019 4:59:34 PM V5 3/30/2019 6:02:52 PM V4 3/20/2019 8:28:55 PM V3 3/8/2019 8:44:22 AM
 #CE
 
 Func ClearTitle()
@@ -1756,6 +1682,7 @@ Func ClearScreen()
 	$g_fEdSwitch = False ;7
 	$g_fEdKey = False ;3
 	$g_fEdTorch = False ;4
+	$g_aPushPop[0] = 0
 
 	GUICtrlSetBkColor($g_bRepeat, $COLOR_RED)
 	$g_GameChanged = False
@@ -1764,7 +1691,7 @@ Func ClearScreen()
 
 EndFunc   ;==>ClearScreen
 #CS INFO
-	58985 V6 4/19/2019 12:33:28 AM V5 4/2/2019 12:11:02 AM V4 3/30/2019 6:02:52 PM V3 3/15/2019 8:15:41 PM
+	60941 V7 4/26/2019 6:23:56 PM V6 4/19/2019 12:33:28 AM V5 4/2/2019 12:11:02 AM V4 3/30/2019 6:02:52 PM
 #CE
 
 Func ClearObject($x, $y)
@@ -2023,7 +1950,7 @@ Func GameScreen()
 				If $g_irLevel < 5 Then
 					SkipPassCode($g_irLevel)
 				EndIf
-;~~
+
 				;Find next level, if no more level pick a random level to play - until user runs out of lives.
 				NextPlayLevel()
 
@@ -2037,7 +1964,7 @@ Func GameScreen()
 
 EndFunc   ;==>GameScreen
 #CS INFO
-	224847 V17 4/25/2019 11:42:38 PM V16 4/23/2019 8:02:57 PM V15 4/18/2019 4:49:42 PM V14 3/30/2019 6:02:52 PM
+	224536 V18 4/26/2019 6:23:56 PM V17 4/25/2019 11:42:38 PM V16 4/23/2019 8:02:57 PM V15 4/18/2019 4:49:42 PM
 #CE
 
 ;improvement local static array of which levels active on first pass, after that search them.
@@ -2464,15 +2391,19 @@ Func LoadLevel($Level)
 	$g_fHiddenActive = False
 	$g_iDiamondCnt = 0
 	$g_iObjCnt = 0
+	$g_aPushPop[0] = 0
+
+;Type of Objects
+			; 1 Lift
+			; 2 Missile
+			; 3 Hor moving
+			; 4 Hor moving direction change
+			; 5 Ver Moving
+			; 6 Moving down
+
 	For $y = 1 To $s_iMapSizeY
 		For $x = 1 To $s_iMapSizeX
 			$a = $g_aMap[$x][$y]
-			;	1 Lift direction 0 = bottom 1  = up, -1 = down
-			;	2 Missile
-			;	3 Hor Letter 11
-			;   4 Hor Letter 13
-			;   5 Vert 15
-			;   6 Platform Down 9
 
 			Switch $a
 				Case 17, 12, 14, 16 ;hidden
@@ -2543,6 +2474,16 @@ Func LoadLevel($Level)
 					$g_aObj[$g_iObjCnt][$s_HalfSpeed] = True
 					$g_iObjCnt += 1
 
+				Case 10 ;PushPop
+					$g_aPushPop[0] += 1
+					If $g_aPushPop[0] = 1 Then
+						$g_aPushPop[1] = $x
+						$g_aPushPop[2] = $y
+					Else
+						$g_aPushPop[3] = $x
+						$g_aPushPop[4] = $y
+					EndIf
+
 				Case 2 ;Diamond
 					$g_iDiamondCnt += 1
 				Case 1 ; You
@@ -2565,7 +2506,7 @@ Func LoadLevel($Level)
 	DisplayStatus(99)
 EndFunc   ;==>LoadLevel
 #CS INFO
-	293355 V10 3/30/2019 6:02:52 PM V9 3/27/2019 9:45:39 PM V8 3/21/2019 4:38:57 PM V7 3/20/2019 8:28:55 PM
+	318013 V11 4/26/2019 6:23:56 PM V10 3/30/2019 6:02:52 PM V9 3/27/2019 9:45:39 PM V8 3/21/2019 4:38:57 PM
 #CE
 
 Func MoveObj()
@@ -2653,7 +2594,7 @@ Func MoveYou()
 
 			If $Hit = 0 Then ;OK
 				$g_cMoveEvent = "D" ; You down
-				MoveYouObject($TestX, $TestY) ; Test is new location.
+				MoveYouObject($TestX, $TestY)
 				;MoveYouUp()
 			ElseIf $Hit = 5 Then ;Door
 				DoDoor($TestX, $TestY)
@@ -2674,6 +2615,8 @@ Func MoveYou()
 					DoTorch($TestX, $TestY)
 				Case 7, 30 ;Tap
 					DoTap($TestX, $TestY)
+				Case 10 ; PushPop
+					DoPushPop($TestX, $TestY)
 			EndSwitch
 
 	EndSwitch
@@ -2681,7 +2624,26 @@ Func MoveYou()
 
 EndFunc   ;==>MoveYou
 #CS INFO
-	70582 V4 4/3/2019 2:19:42 AM V3 3/13/2019 1:18:00 AM V2 2/24/2019 6:05:52 PM V1 2/24/2019 12:43:53 AM
+	72521 V5 4/26/2019 6:23:56 PM V4 4/3/2019 2:19:42 AM V3 3/13/2019 1:18:00 AM V2 2/24/2019 6:05:52 PM
+#CE
+
+Func DoPushPop($x, $y)
+	Local $from, $to, $Hit
+	If $g_aPushPop[1] = $x And $g_aPushPop[2] = $y Then
+		$from = 1
+		$to = 3
+	Else
+		$from = 3
+		$to = 1
+	EndIf
+	;Check TO location above
+	$Hit = Collision($g_aPushPop[$to], $g_aPushPop[$to + 1] + 1)
+	If $Hit = $EMPTY Then ;OK do transfer
+		MoveYouObject($g_aPushPop[$to], $g_aPushPop[$to + 1] + 1)
+	EndIf
+EndFunc   ;==>DoPushPop
+#CS INFO
+	28322 V1 4/26/2019 6:23:56 PM
 #CE
 
 Func MoveYouDown()
@@ -2698,7 +2660,7 @@ Func MoveYouDown()
 		Switch $Hit
 			Case 6 ; Water
 				$g_iDead = 1
-				;Case 8 ;Lift
+
 			Case 15 ; Vert up
 				$g_iDead = 3
 		EndSwitch
@@ -2707,7 +2669,7 @@ Func MoveYouDown()
 	Return False
 EndFunc   ;==>MoveYouDown
 #CS INFO
-	25833 V4 4/23/2019 12:08:13 PM V3 4/3/2019 2:19:42 AM V2 2/24/2019 6:05:52 PM V1 2/24/2019 12:43:53 AM
+	24880 V5 4/26/2019 6:23:56 PM V4 4/23/2019 12:08:13 PM V3 4/3/2019 2:19:42 AM V2 2/24/2019 6:05:52 PM
 #CE
 
 #cs
@@ -3217,11 +3179,17 @@ Func OneOnlyRemove($a)
 			Case 4
 				$g_fEdTorch = False
 				TurnButtonOn(4)
+			Case 10
+				$g_aPushPop[0] -= 1
+
+				If $g_aPushPop[0] < 2 Then
+					TurnButtonOn(10)
+				EndIf
 		EndSwitch
 	EndIf
 EndFunc   ;==>OneOnlyRemove
 #CS INFO
-	25407 V1 3/31/2019 4:59:34 PM
+	31988 V2 4/26/2019 6:23:56 PM V1 3/31/2019 4:59:34 PM
 #CE
 
 Func TurnButtonOn($a)
@@ -3297,12 +3265,40 @@ Func CkobjOneOnly($a) ; Run after storing value into map
 				$g_iPick = $NULL
 				TurnButtonOff(4)
 
+			Case 10
+				$g_aPushPop[0] += 1
+				If $g_aPushPop[0] > 2 Then
+					MsgBox($MB_TOPMOST, "3 or More object - Should have only two", "Should have only two - Remove one!  PushPop ")
+				EndIf
+				If $g_aPushPop[0] > 1 Then
+					$g_iPick = $NULL
+					TurnButtonOff(10)
+				EndIf
+
 		EndSwitch
 
 	EndIf
 EndFunc   ;==>CkobjOneOnly
 #CS INFO
-	87250 V1 3/31/2019 4:59:34 PM
+	106251 V2 4/26/2019 6:23:56 PM V1 3/31/2019 4:59:34 PM
+#CE
+
+Func BonusBar()
+	Local Static $idProgressbar = 0
+	;$s_iLineTop + $s_iLineSpace * 1, $s_iHalfway, 24
+	If $idProgressbar = 0 Then
+		$idProgressbar = GUICtrlCreateProgress($s_iHalfway - 300, $s_iLineTop + $s_iLineSpace * 2, 600, 20, $PBS_SMOOTH)
+		GUICtrlCreateLabel("Bonus", $s_iHalfway - 20, $s_iLineTop + $s_iLineSpace * 3, 100, 24) ;  100 don't make too big over write KEY on screen
+	EndIf
+	If $g_iBonus < 4500 Then
+		GUICtrlSetData($idProgressbar, (4500 - $g_iBonus) / 45)
+	Else
+		GUICtrlSetData($idProgressbar, 0)
+	EndIf
+
+EndFunc   ;==>BonusBar
+#CS INFO
+	40314 V3 3/28/2019 9:21:27 PM V2 3/21/2019 4:38:57 PM V1 2/26/2019 9:53:21 PM
 #CE
 
 Func ShowObject($x, $y, $a)
@@ -3402,6 +3398,12 @@ Func ShowObject($x, $y, $a)
 			Case 254
 				$Color = "White.jpg"
 
+			Case 10 ; PushPop
+				$Color = "PushPop.jpg" ; temp
+
+				;Case 10 ; Exit
+				;$Color = "exit.jpg"
+
 			Case 8 ;lift
 				$Color = "lift.jpg"
 			Case 9 ;Platform down
@@ -3452,25 +3454,96 @@ Func ShowObject($x, $y, $a)
 	EndIf
 EndFunc   ;==>ShowObject
 #CS INFO
-	178889 V11 3/31/2019 4:59:34 PM V10 3/30/2019 12:24:33 AM V9 3/21/2019 4:38:57 PM V8 3/20/2019 8:28:55 PM
+	182328 V12 4/26/2019 6:23:56 PM V11 3/31/2019 4:59:34 PM V10 3/30/2019 12:24:33 AM V9 3/21/2019 4:38:57 PM
 #CE
 
-Func BonusBar()
-	Local Static $idProgressbar = 0
-	;$s_iLineTop + $s_iLineSpace * 1, $s_iHalfway, 24
-	If $idProgressbar = 0 Then
-		$idProgressbar = GUICtrlCreateProgress($s_iHalfway - 300, $s_iLineTop + $s_iLineSpace * 2, 600, 20, $PBS_SMOOTH)
-		GUICtrlCreateLabel("Bonus", $s_iHalfway - 20, $s_iLineTop + $s_iLineSpace * 3, 100, 24) ;  100 don't make too big over write KEY on screen
+;$a >0 return text for $a  -1 use aMap location at   -2  display cur
+Func EditObject($a)
+	Local $tx, $vx, $vy
+
+	;EditObject(-2)
+	If $a = -2 Then
+		$vx = $g_iEdit_Xcur + $s_iMapOffsetX
+		$vy = $s_iMapSizeY - $g_iEdit_Ycur + $s_iMapOffsetY
+		GUICtrlSetImage($g_aEditMap[$vx][$vy], "Pic\Edit.jpg")
 	EndIf
-	If $g_iBonus < 4500 Then
-		GUICtrlSetData($idProgressbar, (4500 - $g_iBonus) / 45)
-	Else
-		GUICtrlSetData($idProgressbar, 0)
+	If $a < 0 Then
+		$a = $g_aMap[$g_iEdit_Xcur][$g_iEdit_Ycur]
 	EndIf
 
-EndFunc   ;==>BonusBar
+	$tx = ""
+	Switch $a
+		Case 0
+			$tx = "Empty"
+		Case 10 ; Added 26-Apr-19
+			$tx = "Push Pop"
+		Case 11 ;Hor Right
+			$tx = "Horz Right"
+		Case 13 ;Hor Left
+			$tx = "Horz Left"
+		Case 12 ;Hor Hid Right
+			$tx = "Horz Hidden"
+		Case 14 ;Hor Hid Left  ;9330 removed
+			$tx = "NOT USED"
+		Case 7 ;Missile on
+			$tx = "Missile On"
+		Case 30 ; Missile off
+			$tx = "Missile Off"
+		Case 15 ;Ver Block
+			$tx = "Vertical"
+			;Case 16 ;Ver Block   ; Hide no enough warning.
+			;	$tx = "VerticalHid"
+		Case 31
+			$tx = "Missile"
+		Case 128
+			$tx = "Blue"
+		Case 129
+			$tx = "Green"
+		Case 130
+			$tx = "Dark Blue"
+		Case 131
+			$tx = "Darkest Blue"
+		Case 132
+			$tx = "Dark Green"
+		Case 133
+			$tx = "Dark Red"
+		Case 134
+			$tx = "Red"
+		Case 135
+			$tx = "Earth"
+		Case 136
+			$tx = "Light Blue"
+		Case 5
+			$tx = "Door"
+		Case 8 ;lift
+			$tx = "Lift"
+		Case 9 ;Platform down
+			$tx = "Ride Down"
+		Case 2
+			$tx = "Diamond"
+		Case 1 ; You
+			$tx = "You"
+		Case 3
+			$tx = "Key"
+		Case 17
+			$tx = "Hidden Block"
+		Case 4
+			$tx = "Torch"
+		Case 6
+			$tx = "Water"
+		Case $NULL
+			$tx = "Nothing Selected"
+		Case 254
+			$tx = "White"
+	EndSwitch
+	If $tx = "" Then ;letter or error
+		$tx = "Letter " & Chr($a) & " " & $a
+	EndIf
+
+	Return $tx
+EndFunc   ;==>EditObject
 #CS INFO
-	40314 V3 3/28/2019 9:21:27 PM V2 3/21/2019 4:38:57 PM V1 2/26/2019 9:53:21 PM
+	96115 V7 4/26/2019 6:23:56 PM V6 3/31/2019 4:59:34 PM V5 3/30/2019 6:02:52 PM V4 3/20/2019 8:28:55 PM
 #CE
 
 Main()
@@ -3483,4 +3556,4 @@ EndFunc   ;==>Trim
 	4672 V1 3/27/2019 9:45:39 PM
 #CE
 
-;~T ScriptFunc.exe V0.53 17 Apr 2019 - 4/25/2019 11:42:38 PM
+;~T ScriptFunc.exe V0.53 17 Apr 2019 - 4/26/2019 6:23:56 PM
