@@ -6,9 +6,8 @@
 #EndRegion ;**** Directives created by AutoIt3Wrapper_GUI ****
 AutoItSetOption("MustDeclareVars", 1)
 
-Global $ver = "0.93 26 Apr 19 Exit"
+Global $ver = "0.94 27 Apr 19 Done, checking, Add Text, Bonus You not moved."
 
-Global $_debug = False
 Global $TESTING = @Compiled = 0
 
 #cs ----------------------------------------------------------------------------
@@ -19,6 +18,7 @@ Global $TESTING = @Compiled = 0
 
 	to do: see bottom of instruction.txt
 
+	0.94 27 Apr 19 Done, checking, Add Text, Bonus You not moved.
 	0.93 26 Apr 19 Exit
 	0.92 26 Apr 19 PushPop object (2)
 	0.91 25 Apr 19 After last level do random levels.
@@ -600,7 +600,7 @@ EndFunc   ;==>Instructions
 Func EditScreen()
 	;Edit Screen Button
 	Local $iColumn, $fFac, $iColumnHalf, $iHalf, $iW, $string, $flag
-	Local $mousePos, $tPoint, $x, $y, $z, $nMsg, $sLetters
+	Local $mousePos, $tPoint, $x, $y, $z, $nMsg
 
 	Local Static $Title, $Which[3]
 	Local Static $ls_idDown, $ls_idRight, $ls_idLeft, $ls_idUp, $ls_idSpace, $ls_bQuit, $ls_idPick, $ls_bKeyInput
@@ -998,23 +998,9 @@ Func EditScreen()
 
 				Case $ls_bKeyInput
 					If $g_FileName <> "" Then
-						GUISetAccelerators(1, $g_ScreenEdit)
-						$sLetters = InputBox("Input String", "Display upper case A-Z 0-9 /:-", "", "", -1, -1, Default, Default, 0, $g_ScreenEdit)
-						GUISetAccelerators($aAccelKey2, $g_ScreenEdit)
-						If $sLetters <> "" Then
-							$sLetters = StringUpper($sLetters)
-							If StringLen($sLetters) + $g_iEdit_Xcur > 81 Then ;Too long
-								MsgBox($MB_TOPMOST, "String too long", "String too long!")
-							Else
-								For $z = 1 To StringLen($sLetters)
-									If StringMid($sLetters, $z, 1) = " " Then
-										ShowObject($g_iEdit_Xcur + $z - 1, $g_iEdit_Ycur, $EMPTY)
-									Else
-										ShowObject($g_iEdit_Xcur + $z - 1, $g_iEdit_Ycur, Asc(StringMid($sLetters, $z, 1)))
-									EndIf
-								Next
-							EndIf
-						EndIf
+						GUISetAccelerators(1, $g_ScreenEdit) ; Turn off Accelerator
+						DoAddText()
+						GUISetAccelerators($aAccelKey2, $g_ScreenEdit) ; turn on $aAccelKey2
 					EndIf
 
 				Case $ls_bQuit
@@ -1066,7 +1052,33 @@ Func EditScreen()
 
 EndFunc   ;==>EditScreen
 #CS INFO
-	1031079 V25 4/26/2019 9:16:45 PM V24 4/26/2019 6:23:56 PM V23 4/24/2019 11:40:11 PM V22 4/23/2019 8:02:57 PM
+	992833 V26 4/27/2019 12:08:08 PM V25 4/26/2019 9:16:45 PM V24 4/26/2019 6:23:56 PM V23 4/24/2019 11:40:11 PM
+#CE
+
+Func DoAddText()
+	Local Static $sLetters = ""
+	Local $err, $sLet
+
+		$sLet = InputBox("Input String", "Display upper case A-Z 0-9 /:-", $sLetters, "", -1, -1, Default, Default, 0, $g_ScreenEdit)
+		If @error <> 0 Or $sLet = "" Then
+			Return ; exit function
+		EndIf
+		$sLetters = StringUpper($sLet)
+		If StringLen($sLetters) + $g_iEdit_Xcur > 81 Then ;Too long
+			MsgBox($MB_TOPMOST, "String too long", "String too long!")
+			Return
+		EndIf
+
+	For $z = 1 To StringLen($sLetters)
+		If StringMid($sLetters, $z, 1) = " " Then
+			ShowObject($g_iEdit_Xcur + $z - 1, $g_iEdit_Ycur, $EMPTY)
+		Else
+			ShowObject($g_iEdit_Xcur + $z - 1, $g_iEdit_Ycur, Asc(StringMid($sLetters, $z, 1)))
+		EndIf
+	Next
+EndFunc   ;==>DoAddText
+#CS INFO
+	51032 V1 4/27/2019 12:08:08 PM
 #CE
 
 Func NewLevel()
@@ -2307,15 +2319,17 @@ Func Game($Level)
 				EndIf
 			WEnd
 			ShowBlock()
+			Tick()
+		Else
+			Sleep(200)  ; wait 200ms and not use tick - so bonus does not wind down
 		EndIf
-		Tick()
 	WEnd
 	GUISetAccelerators($g_ScreenGame, $g_ScreenGame)
 	;g_fLevelComplete
 
 EndFunc   ;==>Game
 #CS INFO
-	144679 V15 4/25/2019 11:42:38 PM V14 4/3/2019 2:19:42 AM V13 3/28/2019 9:21:27 PM V12 3/17/2019 2:57:13 AM
+	150534 V16 4/27/2019 12:08:08 PM V15 4/25/2019 11:42:38 PM V14 4/3/2019 2:19:42 AM V13 3/28/2019 9:21:27 PM
 #CE
 
 Func Tick() ; ave time in 50ms  per loop  + 100ms
@@ -2767,7 +2781,7 @@ Func DoDiamond($x, $y)
 	EndIf
 EndFunc   ;==>DoDiamond
 #CS INFO
-	18913 V2 4/26/2019 9:16:45 PM V1 2/24/2019 6:05:52 PM
+	18881 V3 4/27/2019 12:08:08 PM V2 4/26/2019 9:16:45 PM V1 2/24/2019 6:05:52 PM
 #CE
 
 Func DisplayDiamond($do)
@@ -3215,7 +3229,7 @@ Func OneOnlyRemove($a)
 	EndIf
 EndFunc   ;==>OneOnlyRemove
 #CS INFO
-	33896 V3 4/26/2019 9:16:45 PM V2 4/26/2019 6:23:56 PM V1 3/31/2019 4:59:34 PM
+	34374 V4 4/27/2019 12:08:08 PM V3 4/26/2019 9:16:45 PM V2 4/26/2019 6:23:56 PM V1 3/31/2019 4:59:34 PM
 #CE
 
 Func TurnButtonOn($a)
@@ -3590,4 +3604,4 @@ EndFunc   ;==>Trim
 	4672 V1 3/27/2019 9:45:39 PM
 #CE
 
-;~T ScriptFunc.exe V0.53 17 Apr 2019 - 4/26/2019 9:16:45 PM
+;~T ScriptFunc.exe V0.53 17 Apr 2019 - 4/27/2019 12:08:08 PM
