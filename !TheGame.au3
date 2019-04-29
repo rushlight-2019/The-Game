@@ -6,7 +6,7 @@
 #EndRegion ;**** Directives created by AutoIt3Wrapper_GUI ****
 AutoItSetOption("MustDeclareVars", 1)
 
-Global $ver = "0.94 27 Apr 19 Done, checking, Add Text, Bonus You not moved."
+Global $ver = "1.00 29 Apr 19 - Done"
 
 Global $TESTING = @Compiled = 0
 
@@ -18,6 +18,13 @@ Global $TESTING = @Compiled = 0
 
 	to do: see bottom of instruction.txt
 
+	Bridge - with trap door  Ver move thru, you stop at it.
+	Replay Fast/Normal  Edit stop N moves before.
+	Put level 0-10 in game so they can't be changed.
+	1.01 Apr 19
+
+	1.00 29 Apr 19 - Done
+	0.95 28 Apr 19 Checking: Lift
 	0.94 27 Apr 19 Done, checking, Add Text, Bonus You not moved.
 	0.93 26 Apr 19 Exit
 	0.92 26 Apr 19 PushPop object (2)
@@ -1059,15 +1066,15 @@ Func DoAddText()
 	Local Static $sLetters = ""
 	Local $err, $sLet
 
-		$sLet = InputBox("Input String", "Display upper case A-Z 0-9 /:-", $sLetters, "", -1, -1, Default, Default, 0, $g_ScreenEdit)
-		If @error <> 0 Or $sLet = "" Then
-			Return ; exit function
-		EndIf
-		$sLetters = StringUpper($sLet)
-		If StringLen($sLetters) + $g_iEdit_Xcur > 81 Then ;Too long
-			MsgBox($MB_TOPMOST, "String too long", "String too long!")
-			Return
-		EndIf
+	$sLet = InputBox("Input String", "Display upper case A-Z 0-9 /:-", $sLetters, "", -1, -1, Default, Default, 0, $g_ScreenEdit)
+	If @error <> 0 Or $sLet = "" Then
+		Return ; exit function
+	EndIf
+	$sLetters = StringUpper($sLet)
+	If StringLen($sLetters) + $g_iEdit_Xcur > 81 Then ;Too long
+		MsgBox($MB_TOPMOST, "String too long", "String too long!")
+		Return
+	EndIf
 
 	For $z = 1 To StringLen($sLetters)
 		If StringMid($sLetters, $z, 1) = " " Then
@@ -2321,7 +2328,7 @@ Func Game($Level)
 			ShowBlock()
 			Tick()
 		Else
-			Sleep(200)  ; wait 200ms and not use tick - so bonus does not wind down
+			Sleep(200) ; wait 200ms and not use tick - so bonus does not wind down
 		EndIf
 	WEnd
 	GUISetAccelerators($g_ScreenGame, $g_ScreenGame)
@@ -2610,7 +2617,6 @@ Func MoveYou()
 			If $Hit = 0 Then ;OK
 				$g_cMoveEvent = "D" ; You down
 				MoveYouObject($TestX, $TestY)
-				;MoveYouUp()
 
 			ElseIf $Hit = 5 Then ;Door
 				DoDoor($TestX, $TestY)
@@ -2625,7 +2631,6 @@ Func MoveYou()
 			If $Hit = 0 Then ;OK
 				$g_cMoveEvent = "D" ; You down
 				MoveYouObject($TestX, $TestY)
-				;MoveYouUp()
 			ElseIf $Hit = 5 Then ;Door
 				DoDoor($TestX, $TestY)
 			ElseIf $Hit >= 11 And $Hit <= 16 Then
@@ -2654,7 +2659,7 @@ Func MoveYou()
 
 EndFunc   ;==>MoveYou
 #CS INFO
-	72013 V6 4/26/2019 9:16:45 PM V5 4/26/2019 6:23:56 PM V4 4/3/2019 2:19:42 AM V3 3/13/2019 1:18:00 AM
+	69891 V7 4/29/2019 1:35:05 PM V6 4/26/2019 9:16:45 PM V5 4/26/2019 6:23:56 PM V4 4/3/2019 2:19:42 AM
 #CE
 
 Func DoPushPop($x, $y)
@@ -2677,7 +2682,7 @@ EndFunc   ;==>DoPushPop
 #CE
 
 Func MoveYouDown()
-	Local $Hit, $TestX, $TestY
+	Local $Hit, $TestX, $TestY, $x, $y
 
 	$TestX = $g_iYouX
 	$TestY = $g_iYouY - 1
@@ -2686,7 +2691,7 @@ Func MoveYouDown()
 		MoveYouObject($TestX, $TestY)
 		; ShowBlock()
 		Return True
-	Else
+	Else ;Check under
 		Switch $Hit
 			Case 6 ; Water
 				$g_iDead = 1
@@ -2698,22 +2703,14 @@ Func MoveYouDown()
 				If $g_iDiamondCnt = 0 Then
 					$g_fLevelComplete = True
 				EndIf
+
 		EndSwitch
 	EndIf
 
 	Return False
 EndFunc   ;==>MoveYouDown
 #CS INFO
-	30470 V6 4/26/2019 9:16:45 PM V5 4/26/2019 6:23:56 PM V4 4/23/2019 12:08:13 PM V3 4/3/2019 2:19:42 AM
-#CE
-
-#cs
-	;Ride Lift up  - Return True - False=You died
-	Func MoveYouUp()
-	;Sleep(20)
-
-	EndFunc   ;==>MoveYouUp
-	removed 4/2/2019	3921 V1 2/24/2019 6:05:52 PM
+	31950 V7 4/29/2019 1:35:05 PM V6 4/26/2019 9:16:45 PM V5 4/26/2019 6:23:56 PM V4 4/23/2019 12:08:13 PM
 #CE
 
 Func MoveLift($i, $x, $y)
@@ -2723,6 +2720,7 @@ Func MoveLift($i, $x, $y)
 		If $g_aMap[$x][$y + 1] == $YOU Then ;Look for You
 			$g_aObj[$i][$s_ObjAct] = 1 ; Found You turn lift on
 			$g_aObj[$i][$s_LiftY] = $y
+			$g_aObj[$i][$s_HalfSpeed] = True
 		EndIf
 	EndIf
 
@@ -2764,7 +2762,7 @@ Func MoveLift($i, $x, $y)
 
 EndFunc   ;==>MoveLift
 #CS INFO
-	68467 V5 4/3/2019 2:19:42 AM V4 3/30/2019 6:02:52 PM V3 3/11/2019 2:08:18 AM V2 2/24/2019 6:05:52 PM
+	71189 V6 4/29/2019 1:35:05 PM V5 4/3/2019 2:19:42 AM V4 3/30/2019 6:02:52 PM V3 3/11/2019 2:08:18 AM
 #CE
 
 Func DoDiamond($x, $y)
@@ -3604,4 +3602,4 @@ EndFunc   ;==>Trim
 	4672 V1 3/27/2019 9:45:39 PM
 #CE
 
-;~T ScriptFunc.exe V0.53 17 Apr 2019 - 4/27/2019 12:08:08 PM
+;~T ScriptFunc.exe V0.53 17 Apr 2019 - 4/29/2019 1:35:05 PM
