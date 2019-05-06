@@ -6,7 +6,7 @@
 #EndRegion ;**** Directives created by AutoIt3Wrapper_GUI ****
 AutoItSetOption("MustDeclareVars", 1)
 
-Global $ver = "1.03 6 May 19 Missile only show when active seeking"
+Global $ver = "1.03a 6 May 19 Missile only show when active seeking"
 
 Global $TESTING = @Compiled = 0
 
@@ -3487,7 +3487,7 @@ Func ShowObject($x, $y, $a)
 			Case 16 ;Ver Block
 				$Color = "Vert.jpg"
 			Case 31
-				If $g_fMissileActive Or $g_fDemoLevel Then
+				If $g_fMissileActive Or $g_fDemoLevel Or  $g_fEditMode Then
 					$Color = "Missile.jpg"
 				Else
 					$Color = "Black.jpg"
