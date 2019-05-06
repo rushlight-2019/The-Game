@@ -6,7 +6,7 @@
 #EndRegion ;**** Directives created by AutoIt3Wrapper_GUI ****
 AutoItSetOption("MustDeclareVars", 1)
 
-Global $ver = "1.00 29 Apr 19 - Done"
+Global $ver = "1.03 6 May 19 Missile only show when active seeking"
 
 Global $TESTING = @Compiled = 0
 
@@ -16,12 +16,9 @@ Global $TESTING = @Compiled = 0
 	GNU GENERAL PUBLIC LICENSE
 	Version 3, 29 June 2007
 
-	to do: see bottom of instruction.txt
-
-	Bridge - with trap door  Ver move thru, you stop at it.
-	Replay Fast/Normal  Edit stop N moves before.
-	Put level 0-10 in game so they can't be changed.
-	1.01 Apr 19
+	1.03 6 May 19 Missile only show when active seeking
+	1.02 3 May 19 Replay  - works most of the time.  problem it stops 1% of the time needq events!
+	1.01 30 Apr 19	Edit Key and Lamp active on Edit Demo
 
 	1.00 29 Apr 19 - Done
 	0.95 28 Apr 19 Checking: Lift
@@ -273,11 +270,11 @@ Global $g_cKeyEvent = "-"
 Global $g_cMoveEvent = "-"
 
 Global $g_iDiamondCnt = 0
-
 Global $g_iDirection = 0
 
 Global $g_fTap = True ; Tap is on
 Global $g_iTapObj = 0 ;Object number of the Tap
+Global $g_fMissileActive = False
 
 Global $g_fPlatformDelay = True
 
@@ -285,9 +282,7 @@ Global $g_iLives = 6
 Global $g_irLevel = 1
 Global $g_iScore = 0
 Global $g_fHitKey = False
-;Global $g_fHitKeySave = False ;in case of restart level
 Global $g_fKeyUsed = False ; Level keyused  Door is black
-
 Global $g_fHitTorch = False
 
 ;Startup
@@ -354,6 +349,13 @@ Global $g_cGquit
 Global $g_cGdie
 Global $g_cGdown
 
+;Replay
+Global $g_iTickRec
+Global $g_iTickPly
+Global $g_aReplay[4500]
+Global $g_fReplayDo = False
+Global $g_iRepWhat
+
 ;Demo Level
 Global $g_fDemoLevel = False
 
@@ -364,7 +366,7 @@ Func Pause($a = "")
 EndFunc   ;==>Pause
 #CS INFO
 	3687 V3 3/28/2019 9:21:27 PM V2 2/24/2019 6:05:52 PM V1 2/24/2019 10:03:19 AM
-#CE
+#CE INFO
 
 ;----------------------------------- End of Global
 Func Main()
@@ -418,7 +420,7 @@ Func Main()
 EndFunc   ;==>Main
 #CS INFO
 	41497 V6 4/22/2019 9:01:33 AM V5 3/30/2019 6:02:52 PM V4 3/28/2019 9:21:27 PM V3 3/25/2019 12:04:08 AM
-#CE
+#CE INFO
 
 Func Settings()
 	Local $Setting, $y
@@ -464,7 +466,7 @@ Func Settings()
 EndFunc   ;==>Settings
 #CS INFO
 	85719 V2 4/23/2019 2:50:23 AM V1 4/22/2019 9:01:33 AM
-#CE
+#CE INFO
 
 Func ScreenSize()
 	Local $sInputBoxAnswer, $keep, $s, $math
@@ -501,7 +503,7 @@ Func ScreenSize()
 EndFunc   ;==>ScreenSize
 #CS INFO
 	62281 V2 4/23/2019 12:08:13 PM V1 4/23/2019 2:50:23 AM
-#CE
+#CE INFO
 
 ;INI Section Score  ScoreWho
 ;Key 1-8
@@ -524,7 +526,7 @@ Func UpDateHiScore()
 EndFunc   ;==>UpDateHiScore
 #CS INFO
 	28348 V3 4/25/2019 11:42:38 PM V2 3/17/2019 2:57:13 AM V1 2/25/2019 1:58:55 AM
-#CE
+#CE INFO
 
 ; Read HighScore
 Func ReadIni()
@@ -568,7 +570,7 @@ Func ReadIni()
 EndFunc   ;==>ReadIni
 #CS INFO
 	75650 V7 4/26/2019 9:16:45 PM V6 4/22/2019 9:01:33 AM V5 3/30/2019 12:24:33 AM V4 3/17/2019 2:57:13 AM
-#CE
+#CE INFO
 
 Func SaveHiScore()
 	Local $x, $a[9][2]
@@ -583,7 +585,7 @@ Func SaveHiScore()
 EndFunc   ;==>SaveHiScore
 #CS INFO
 	18372 V3 3/17/2019 2:57:13 AM V2 2/25/2019 1:58:55 AM V1 2/24/2019 6:05:52 PM
-#CE
+#CE INFO
 
 ;-------------------------------------------------
 Func DoDemoLevel()
@@ -593,7 +595,7 @@ Func DoDemoLevel()
 EndFunc   ;==>DoDemoLevel
 #CS INFO
 	8093 V2 2/24/2019 6:05:52 PM V1 2/24/2019 10:03:19 AM
-#CE
+#CE INFO
 
 ;-------------------------------------------------=
 
@@ -602,7 +604,7 @@ Func Instructions()
 EndFunc   ;==>Instructions
 #CS INFO
 	9614 V3 4/23/2019 12:08:13 PM V2 2/24/2019 6:05:52 PM V1 2/24/2019 10:03:19 AM
-#CE
+#CE INFO
 
 Func EditScreen()
 	;Edit Screen Button
@@ -1060,7 +1062,7 @@ Func EditScreen()
 EndFunc   ;==>EditScreen
 #CS INFO
 	992833 V26 4/27/2019 12:08:08 PM V25 4/26/2019 9:16:45 PM V24 4/26/2019 6:23:56 PM V23 4/24/2019 11:40:11 PM
-#CE
+#CE INFO
 
 Func DoAddText()
 	Local Static $sLetters = ""
@@ -1086,7 +1088,7 @@ Func DoAddText()
 EndFunc   ;==>DoAddText
 #CS INFO
 	51032 V1 4/27/2019 12:08:08 PM
-#CE
+#CE INFO
 
 Func NewLevel()
 	Local $sLevelPath, $aLevels, $s, $filename
@@ -1130,7 +1132,7 @@ Func NewLevel()
 EndFunc   ;==>NewLevel
 #CS INFO
 	66736 V6 4/25/2019 11:42:38 PM V5 4/24/2019 11:40:11 PM V4 4/23/2019 8:02:57 PM V3 4/22/2019 9:01:33 AM
-#CE
+#CE INFO
 
 Func CKforLevelChange()
 	Local $iMsgBoxAnswer
@@ -1148,7 +1150,7 @@ Func CKforLevelChange()
 EndFunc   ;==>CKforLevelChange
 #CS INFO
 	27217 V1 4/2/2019 12:11:02 AM
-#CE
+#CE INFO
 
 Func EditLevelTitle()
 	Local $sInputBoxAnswer, $aMyDate, $aMyTime, $s, $ans
@@ -1176,7 +1178,7 @@ Func EditLevelTitle()
 EndFunc   ;==>EditLevelTitle
 #CS INFO
 	66333 V2 4/23/2019 12:08:13 PM V1 3/28/2019 9:21:27 PM
-#CE
+#CE INFO
 
 Func SetupWhich(ByRef $aArray, $string)
 	Local $array, $z
@@ -1197,7 +1199,7 @@ Func SetupWhich(ByRef $aArray, $string)
 EndFunc   ;==>SetupWhich
 #CS INFO
 	26008 V2 3/27/2019 9:45:39 PM V1 3/25/2019 9:26:18 PM
-#CE
+#CE INFO
 
 Func StrDemo()
 	If CKforLevelChange() Then
@@ -1208,7 +1210,7 @@ Func StrDemo()
 EndFunc   ;==>StrDemo
 #CS INFO
 	8429 V2 4/2/2019 12:11:02 AM V1 3/25/2019 9:26:18 PM
-#CE
+#CE INFO
 
 Func FlipLevel()
 	Local $ans
@@ -1263,7 +1265,7 @@ Func FlipLevel()
 EndFunc   ;==>FlipLevel
 #CS INFO
 	86829 V1 4/24/2019 11:40:11 PM
-#CE
+#CE INFO
 
 ;			Keep  2 days of edit.  Then the last one per day up  to 30 days.
 ;           Backup format:  LevelXX YYMMDD-hrmnss.lvl
@@ -1282,7 +1284,7 @@ Func BackupSave() ; from ScriptBackup.au3
 EndFunc   ;==>BackupSave
 #CS INFO
 	44852 V2 4/24/2019 11:40:11 PM V1 4/22/2019 9:01:33 AM
-#CE
+#CE INFO
 
 Func BackupClear() ;		from ScriptBackup.au3
 	Local $aFile, $s, $diff, $f
@@ -1307,7 +1309,7 @@ Func BackupClear() ;		from ScriptBackup.au3
 EndFunc   ;==>BackupClear
 #CS INFO
 	44422 V1 4/22/2019 9:01:33 AM
-#CE
+#CE INFO
 
 Func EdSaveLevel()
 	Local $e, $hlv, $x, $y, $aMyDate, $aMyTime
@@ -1354,7 +1356,7 @@ Func EdSaveLevel()
 EndFunc   ;==>EdSaveLevel
 #CS INFO
 	71842 V7 4/22/2019 9:01:33 AM V6 4/2/2019 12:11:02 AM V5 3/30/2019 12:24:33 AM V4 3/28/2019 9:21:27 PM
-#CE
+#CE INFO
 
 Func ListLevel()
 	Local $hlv, $hOut, $x, $y, $a, $filename, $aPos, $aMyDate, $aMyTime, $fSkip
@@ -1428,7 +1430,7 @@ Func ListLevel()
 EndFunc   ;==>ListLevel
 #CS INFO
 	134027 V4 4/23/2019 8:02:57 PM V3 4/23/2019 12:08:13 PM V2 4/22/2019 9:01:33 AM V1 4/3/2019 2:19:42 AM
-#CE
+#CE INFO
 
 Func EdEdLoadLevel() ; called thru Controls button
 	If CKforLevelChange() Then
@@ -1437,7 +1439,7 @@ Func EdEdLoadLevel() ; called thru Controls button
 EndFunc   ;==>EdEdLoadLevel
 #CS INFO
 	10292 V3 4/26/2019 9:16:45 PM V2 4/22/2019 9:01:33 AM V1 4/2/2019 12:11:02 AM
-#CE
+#CE INFO
 
 Func EdLoadBak() ;called thru Bak restore
 	; Problem Only show Current level backups
@@ -1468,7 +1470,7 @@ Func EdLoadBak() ;called thru Bak restore
 EndFunc   ;==>EdLoadBak
 #CS INFO
 	55831 V2 4/23/2019 8:02:57 PM V1 4/22/2019 9:01:33 AM
-#CE
+#CE INFO
 
 Func EdLoadLevel() ; called thru  EdEdLoadLevel or Demo
 	Local $filename
@@ -1488,7 +1490,7 @@ Func EdLoadLevel() ; called thru  EdEdLoadLevel or Demo
 EndFunc   ;==>EdLoadLevel
 #CS INFO
 	28202 V2 4/23/2019 8:02:57 PM V1 4/22/2019 9:01:33 AM
-#CE
+#CE INFO
 
 Func EdLoadLevelDo($filename)
 	Local $hlv, $x, $y, $a, $PleaseWait, $aPos, $aMyDate, $aMyTime, $sName
@@ -1572,7 +1574,7 @@ Func EdLoadLevelDo($filename)
 EndFunc   ;==>EdLoadLevelDo
 #CS INFO
 	124665 V15 4/26/2019 9:16:45 PM V14 4/26/2019 6:23:56 PM V13 4/23/2019 8:02:57 PM V12 4/22/2019 9:01:33 AM
-#CE
+#CE INFO
 
 ;Load Level
 ; to remove Run again
@@ -1615,7 +1617,7 @@ Func SayLoadLevel($Mode = 0, $Screen = 0, $filename = "") ;Screen that it going 
 EndFunc   ;==>SayLoadLevel
 #CS INFO
 	77679 V5 4/23/2019 8:02:57 PM V4 4/2/2019 12:11:02 AM V3 3/31/2019 4:59:34 PM V2 3/15/2019 8:15:41 PM
-#CE
+#CE INFO
 
 Func EditStatus()
 	Local $tx
@@ -1634,7 +1636,7 @@ Func EditStatus()
 EndFunc   ;==>EditStatus
 #CS INFO
 	25794 V5 3/31/2019 4:59:34 PM V4 3/30/2019 6:02:52 PM V3 3/26/2019 8:43:36 PM V2 2/24/2019 6:05:52 PM
-#CE
+#CE INFO
 
 Func ClearTitle()
 	$g_FileName = ""
@@ -1644,7 +1646,7 @@ Func ClearTitle()
 EndFunc   ;==>ClearTitle
 #CS INFO
 	9309 V2 4/23/2019 12:08:13 PM V1 4/22/2019 9:01:33 AM
-#CE
+#CE INFO
 
 ;Both Edit and Game
 
@@ -1667,7 +1669,7 @@ Func DisplayTitleDate()
 EndFunc   ;==>DisplayTitleDate
 #CS INFO
 	38549 V2 4/18/2019 4:49:42 PM V1 3/28/2019 9:21:27 PM
-#CE
+#CE INFO
 
 Func EdClearScreen()
 	Local $iMsgBoxAnswer
@@ -1681,7 +1683,7 @@ Func EdClearScreen()
 EndFunc   ;==>EdClearScreen
 #CS INFO
 	24866 V1 4/2/2019 12:11:02 AM
-#CE
+#CE INFO
 
 Func ClearScreen()
 	Local $Color, $vx, $vy, $x, $y
@@ -1723,7 +1725,7 @@ Func ClearScreen()
 EndFunc   ;==>ClearScreen
 #CS INFO
 	61831 V8 4/26/2019 9:16:45 PM V7 4/26/2019 6:23:56 PM V6 4/19/2019 12:33:28 AM V5 4/2/2019 12:11:02 AM
-#CE
+#CE INFO
 
 Func ClearObject($x, $y)
 	Local $o
@@ -1736,7 +1738,7 @@ Func ClearObject($x, $y)
 EndFunc   ;==>ClearObject
 #CS INFO
 	10813 V1 2/24/2019 6:05:52 PM
-#CE
+#CE INFO
 
 ;----------------------------------------------------
 ;Start Screen
@@ -1856,13 +1858,14 @@ Func StartScreen()
 EndFunc   ;==>StartScreen
 #CS INFO
 	304245 V11 4/25/2019 11:42:38 PM V10 4/23/2019 2:50:23 AM V9 4/18/2019 4:49:42 PM V8 3/30/2019 6:02:52 PM
-#CE
+#CE INFO
 
 ;-----------------------------------------
 
 ;Game Screen
 Func GameScreen()
 	Local $x, $y
+	Local $iMsgBoxAnswer
 
 	If $g_ScreenGame = 0 Then
 
@@ -1908,9 +1911,13 @@ Func GameScreen()
 	DisplayStatus(98)
 
 	GUISetState(@SW_SHOW, $g_ScreenGame)
-
-	$g_fHitTorch = False
-	$g_fHitKey = False
+	If $g_fEditDemo Then
+		$g_fHitTorch = True
+		$g_fHitKey = True
+	Else
+		$g_fHitTorch = False
+		$g_fHitKey = False
+	EndIf
 
 	$g_iScore = 0
 	$g_iLives = 6
@@ -1968,9 +1975,19 @@ Func GameScreen()
 			EndIf
 		Else
 			If $g_fEditDemo Then
-				If MsgBox(4, "Test Game", "Continue Test Game") = $IDNO Then
-					ExitLoop
-				EndIf
+				; If MsgBox(4, "Test Game", "Continue Test Game") = $IDNO Then
+
+				$iMsgBoxAnswer = MsgBox(518, "Test Game", "Continue: Test Game? " & @CRLF & "Try Again:  Do Replay" & @CRLF & "Cancel: Return to Editor")
+				Select
+					Case $iMsgBoxAnswer = 2 ;Cancel
+						ExitLoop
+					Case $iMsgBoxAnswer = 10 ;Try Again
+						$g_fReplayDo = True
+
+					Case $iMsgBoxAnswer = 11 ;Continue
+
+				EndSelect
+
 			EndIf
 		EndIf
 
@@ -1995,7 +2012,7 @@ Func GameScreen()
 
 EndFunc   ;==>GameScreen
 #CS INFO
-	224536 V18 4/26/2019 6:23:56 PM V17 4/25/2019 11:42:38 PM V16 4/23/2019 8:02:57 PM V15 4/18/2019 4:49:42 PM
+	252492 V19 5/6/2019 7:40:52 AM V18 4/26/2019 6:23:56 PM V17 4/25/2019 11:42:38 PM V16 4/23/2019 8:02:57 PM
 #CE
 
 ;improvement local static array of which levels active on first pass, after that search them.
@@ -2058,7 +2075,7 @@ Func NextPlayLevel()
 EndFunc   ;==>NextPlayLevel
 #CS INFO
 	83020 V1 4/25/2019 11:42:38 PM
-#CE
+#CE INFO
 
 Func SkipPassCode($Lv)
 
@@ -2067,14 +2084,14 @@ Func SkipPassCode($Lv)
 EndFunc   ;==>SkipPassCode
 #CS INFO
 	11180 V2 3/30/2019 12:24:33 AM V1 2/24/2019 6:05:52 PM
-#CE
+#CE INFO
 
 Func Code($value)
 	Return StringMid("ABCDFGHKLMN", (($value - 1) * 2) + 1, 4)
 EndFunc   ;==>Code
 #CS INFO
 	6374 V2 2/26/2019 9:53:21 PM V1 2/24/2019 6:05:52 PM
-#CE
+#CE INFO
 
 ;return level
 Func CkCode($string)
@@ -2098,7 +2115,7 @@ Func CkCode($string)
 EndFunc   ;==>CkCode
 #CS INFO
 	21405 V3 2/24/2019 6:05:52 PM V2 2/24/2019 10:03:19 AM V1 2/24/2019 12:43:53 AM
-#CE
+#CE INFO
 
 Func InputCode()
 	Local $code = InputBox("Test Code", "To skip to level, enter the 4 letter code: ")
@@ -2109,7 +2126,7 @@ Func InputCode()
 EndFunc   ;==>InputCode
 #CS INFO
 	15631 V4 2/26/2019 9:53:21 PM V3 2/26/2019 8:07:26 AM V2 2/24/2019 6:05:52 PM V1 2/24/2019 10:03:19 AM
-#CE
+#CE INFO
 
 Func MoveYouObject($TestX, $TestY)
 	ClearObject($g_iYouX, $g_iYouY)
@@ -2120,7 +2137,7 @@ Func MoveYouObject($TestX, $TestY)
 EndFunc   ;==>MoveYouObject
 #CS INFO
 	13281 V1 2/24/2019 6:05:52 PM
-#CE
+#CE INFO
 
 Func ShowBlock() ;around you
 	Local $xx, $x, $yy, $y
@@ -2147,7 +2164,7 @@ Func ShowBlock() ;around you
 EndFunc   ;==>ShowBlock
 #CS INFO
 	25519 V3 3/26/2019 8:43:36 PM V2 2/24/2019 6:05:52 PM V1 2/24/2019 12:43:53 AM
-#CE
+#CE INFO
 
 ;Global $g_aHidden[50][4] ;0 = 0,1 used : 1 New 1=Show 2=Hide, 0=no Change, 2 X : 3 Y
 Func DoList()
@@ -2175,7 +2192,7 @@ Func DoList()
 EndFunc   ;==>DoList
 #CS INFO
 	38630 V4 3/30/2019 12:24:33 AM V3 3/11/2019 6:15:52 PM V2 2/24/2019 6:05:52 PM V1 2/24/2019 12:43:53 AM
-#CE
+#CE INFO
 
 Func Show2List($x, $y)
 	Local $Free = -1
@@ -2207,7 +2224,7 @@ Func Show2List($x, $y)
 EndFunc   ;==>Show2List
 #CS INFO
 	40772 V2 2/24/2019 6:05:52 PM V1 2/24/2019 12:43:53 AM
-#CE
+#CE INFO
 
 ;Collision
 Func Collision($TestX, $TestY)
@@ -2217,7 +2234,7 @@ Func Collision($TestX, $TestY)
 EndFunc   ;==>Collision
 #CS INFO
 	7106 V1 2/24/2019 6:05:52 PM
-#CE
+#CE INFO
 
 ;=====================================================
 Func Game($Level)
@@ -2239,23 +2256,29 @@ Func Game($Level)
 	SayLoadLevel()
 	$g_iDead = 0
 	$g_fTap = True
-	$g_hTick = TimerInit()
 	$g_fLevelComplete = False
 	BonusBar()
 
 	$g_cKeyEvent = False
 	$g_iDirection = "-"
 	$NextMsg = 0
-
 	Local $aAccelKey[][] = [["{RIGHT}", $g_cGright], ["{LEFT}", $g_cGleft], ["c", $g_cGquit], ["{DOWN}", $g_cGdown], ["{ESC}", $g_cGdie]]
 	GUISetAccelerators($aAccelKey, $g_ScreenGame)
 
 	$fUmoved = False
-	;$fUmoved = True
+	If $g_fReplayDo Then
+		$g_iTickPly = 0
+	Else
+		$g_iTickRec = 0
+	EndIf
+
 	Do
 		$y = GUIGetMsg()
 	Until $y = 0
 
+	$g_hTick = TimerInit()
+
+	;Start game loop
 	While 1
 		If $g_iDead > 0 Then
 			ExitLoop ;Exit game and to lives count down
@@ -2275,33 +2298,55 @@ Func Game($Level)
 			$y = $NextMsg
 			$NextMsg = 0
 		EndIf
+
+		If $g_fReplayDo Then
+			$y = $g_aReplay[$g_iTickPly]
+			If $g_iTickPly < 4500 Then
+				$g_iTickPly += 1
+			EndIf
+			If $g_iTickPly >= $g_iTickRec Then
+				$g_fReplayDo = False
+			EndIf
+		EndIf
+
 		If $y > 0 Then
 			Switch $y
 				Case $g_cGleft
 					Do
 					Until GUIGetMsg() <> $g_cGleft
+					$g_iRepWhat = $y
 					$g_iDirection = "L"
 					$g_cKeyEvent = True
 					$fUmoved = True
 				Case $g_cGright
 					Do
 					Until GUIGetMsg() <> $g_cGright
+					$g_iRepWhat = $y
 					$g_iDirection = "R"
 					$g_cKeyEvent = True
 					$fUmoved = True
-				Case $g_cGquit
-					$g_ExitGameScreen = True
-					ExitLoop
 				Case $g_cGdown
 					Do
 					Until GUIGetMsg() <> $g_cGdown
+					$g_iRepWhat = $y
 					$g_iDirection = "D"
 					$g_cKeyEvent = True
 					$fUmoved = True
-				Case $g_cGdie
+
+				Case $g_cGquit ;c
+					$g_ExitGameScreen = True
+					$g_iRepWhat = $y
+					ReplayRecDo()
+					$g_fReplayDo = False
+					ExitLoop
+
+				Case $g_cGdie ;Esc
 					Do
 					Until GUIGetMsg() <> $g_cGdie
 					$g_iDead = 5
+					$g_iRepWhat = $y
+					ReplayRecDo()
+					$g_fReplayDo = False
 			EndSwitch
 		Else
 			If $y <> 0 Then
@@ -2332,17 +2377,19 @@ Func Game($Level)
 		EndIf
 	WEnd
 	GUISetAccelerators($g_ScreenGame, $g_ScreenGame)
-	;g_fLevelComplete
+	$g_fReplayDo = False
+	;Complete
 
 EndFunc   ;==>Game
 #CS INFO
-	150534 V16 4/27/2019 12:08:08 PM V15 4/25/2019 11:42:38 PM V14 4/3/2019 2:19:42 AM V13 3/28/2019 9:21:27 PM
+	181860 V17 5/6/2019 7:40:52 AM V16 4/27/2019 12:08:08 PM V15 4/25/2019 11:42:38 PM V14 4/3/2019 2:19:42 AM
 #CE
 
 Func Tick() ; ave time in 50ms  per loop  + 100ms
 	Local $fdiff = -1
 	Local Static $l_iBonusShow = 0
 
+	ReplayRecDo()
 	$g_iBonus += 1
 	$l_iBonusShow += 1
 	If $l_iBonusShow > 40 Then
@@ -2359,7 +2406,23 @@ Func Tick() ; ave time in 50ms  per loop  + 100ms
 	$g_hTick = TimerInit()
 EndFunc   ;==>Tick
 #CS INFO
-	23417 V4 3/21/2019 4:38:57 PM V3 2/26/2019 9:53:21 PM V2 2/26/2019 8:07:26 AM V1 2/24/2019 6:05:52 PM
+	24580 V5 5/6/2019 7:40:52 AM V4 3/21/2019 4:38:57 PM V3 2/26/2019 9:53:21 PM V2 2/26/2019 8:07:26 AM
+#CE
+
+Func ReplayRecDo()
+	If $g_fReplayDo = False Then
+		;	$G_aReplay[$g_iTickRec] = TimerDiff($g_hTick)
+
+		$g_aReplay[$g_iTickRec] = $g_iRepWhat
+		$g_iRepWhat = 0
+		If $g_iTickRec < 4500 Then
+			$g_iTickRec += 1
+		EndIf
+	EndIf
+
+EndFunc   ;==>ReplayRecDo
+#CS INFO
+	18091 V1 5/6/2019 7:40:52 AM
 #CE
 
 Func LoadLevel($Level)
@@ -2456,6 +2519,7 @@ Func LoadLevel($Level)
 				Case 31 ; Fountain now Missile
 					$g_aObj[$g_iObjCnt][$s_ObjType] = 2
 					$g_aObj[$g_iObjCnt][$s_ObjAct] = 0
+					$g_fMissileActive = False
 					$g_aObj[$g_iObjCnt][$s_ObjX] = $x
 					$g_aObj[$g_iObjCnt][$s_ObjY] = $y
 					$g_iTapObj = $g_iObjCnt
@@ -2471,6 +2535,10 @@ Func LoadLevel($Level)
 						$g_aObj[$g_iObjCnt][$s_HidAtc] = True
 						$z = Random(0, 1, 1)
 						If $z = 0 Then $z = -1
+
+						If $g_fEditDemo Then
+							$z = 1 ; so replay won't fail
+						EndIf
 						$g_aObj[$g_iObjCnt][$s_HVdir] = $z
 						$g_fHiddenActive = True
 					Else ;11 or 13
@@ -2543,7 +2611,7 @@ Func LoadLevel($Level)
 	DisplayStatus(99)
 EndFunc   ;==>LoadLevel
 #CS INFO
-	310029 V12 4/26/2019 9:16:45 PM V11 4/26/2019 6:23:56 PM V10 3/30/2019 6:02:52 PM V9 3/27/2019 9:45:39 PM
+	316503 V13 5/6/2019 7:40:52 AM V12 4/26/2019 9:16:45 PM V11 4/26/2019 6:23:56 PM V10 3/30/2019 6:02:52 PM
 #CE
 
 Func MoveObj()
@@ -2589,7 +2657,7 @@ Func MoveObj()
 EndFunc   ;==>MoveObj
 #CS INFO
 	58351 V3 3/8/2019 8:44:22 AM V2 2/24/2019 6:05:52 PM V1 2/24/2019 12:43:53 AM
-#CE
+#CE INFO
 
 Func ClearDisplayMap()
 	Local $x, $y
@@ -2602,7 +2670,7 @@ Func ClearDisplayMap()
 EndFunc   ;==>ClearDisplayMap
 #CS INFO
 	13761 V2 2/24/2019 6:05:52 PM V1 2/24/2019 12:43:53 AM
-#CE
+#CE INFO
 
 ;-------------------------------
 
@@ -2660,7 +2728,7 @@ Func MoveYou()
 EndFunc   ;==>MoveYou
 #CS INFO
 	69891 V7 4/29/2019 1:35:05 PM V6 4/26/2019 9:16:45 PM V5 4/26/2019 6:23:56 PM V4 4/3/2019 2:19:42 AM
-#CE
+#CE INFO
 
 Func DoPushPop($x, $y)
 	Local $from, $to, $Hit
@@ -2679,7 +2747,7 @@ Func DoPushPop($x, $y)
 EndFunc   ;==>DoPushPop
 #CS INFO
 	26290 V2 4/26/2019 9:16:45 PM V1 4/26/2019 6:23:56 PM
-#CE
+#CE INFO
 
 Func MoveYouDown()
 	Local $Hit, $TestX, $TestY, $x, $y
@@ -2711,7 +2779,7 @@ Func MoveYouDown()
 EndFunc   ;==>MoveYouDown
 #CS INFO
 	31950 V7 4/29/2019 1:35:05 PM V6 4/26/2019 9:16:45 PM V5 4/26/2019 6:23:56 PM V4 4/23/2019 12:08:13 PM
-#CE
+#CE INFO
 
 Func MoveLift($i, $x, $y)
 	Local $Ly, $ColY, $Hit
@@ -2763,7 +2831,7 @@ Func MoveLift($i, $x, $y)
 EndFunc   ;==>MoveLift
 #CS INFO
 	71189 V6 4/29/2019 1:35:05 PM V5 4/3/2019 2:19:42 AM V4 3/30/2019 6:02:52 PM V3 3/11/2019 2:08:18 AM
-#CE
+#CE INFO
 
 Func DoDiamond($x, $y)
 	$g_iDiamondCnt -= 1
@@ -2780,7 +2848,7 @@ Func DoDiamond($x, $y)
 EndFunc   ;==>DoDiamond
 #CS INFO
 	18881 V3 4/27/2019 12:08:08 PM V2 4/26/2019 9:16:45 PM V1 2/24/2019 6:05:52 PM
-#CE
+#CE INFO
 
 Func DisplayDiamond($do)
 
@@ -2797,7 +2865,7 @@ Func DisplayDiamond($do)
 EndFunc   ;==>DisplayDiamond
 #CS INFO
 	36795 V1 2/24/2019 6:05:52 PM
-#CE
+#CE INFO
 
 ;--------------------------------------
 
@@ -2816,7 +2884,7 @@ Func DisplayLives($do)
 EndFunc   ;==>DisplayLives
 #CS INFO
 	36866 V2 2/26/2019 9:53:21 PM V1 2/24/2019 6:05:52 PM
-#CE
+#CE INFO
 
 Func DisplayScore($do)
 	Local Static $ls_iScoreLabel = 0
@@ -2833,7 +2901,7 @@ Func DisplayScore($do)
 EndFunc   ;==>DisplayScore
 #CS INFO
 	38034 V2 3/21/2019 4:38:57 PM V1 2/24/2019 6:05:52 PM
-#CE
+#CE INFO
 
 Func DisplayStatus($do)
 	Local $sLevel
@@ -2891,7 +2959,7 @@ Func DisplayStatus($do)
 EndFunc   ;==>DisplayStatus
 #CS INFO
 	142197 V5 3/21/2019 4:38:57 PM V4 3/13/2019 1:52:12 PM V3 3/13/2019 1:18:00 AM V2 2/24/2019 6:05:52 PM
-#CE
+#CE INFO
 
 Func DoKey($x, $y)
 	$g_fHitKey = True
@@ -2903,7 +2971,7 @@ Func DoKey($x, $y)
 EndFunc   ;==>DoKey
 #CS INFO
 	10699 V3 3/11/2019 6:15:52 PM V2 2/26/2019 8:07:26 AM V1 2/24/2019 6:05:52 PM
-#CE
+#CE INFO
 
 Func DisplayKey($do)
 	Local Static $KeyLabel
@@ -2927,7 +2995,7 @@ Func DisplayKey($do)
 EndFunc   ;==>DisplayKey
 #CS INFO
 	41970 V2 3/28/2019 9:21:27 PM V1 3/11/2019 6:15:52 PM
-#CE
+#CE INFO
 
 Func DisplayTorch($do)
 	Local Static $TorchLabel
@@ -2950,7 +3018,7 @@ Func DisplayTorch($do)
 EndFunc   ;==>DisplayTorch
 #CS INFO
 	42419 V2 3/28/2019 9:21:27 PM V1 3/11/2019 6:15:52 PM
-#CE
+#CE INFO
 
 Func DoTorch($x, $y)
 	$g_fHitTorch = True
@@ -2962,12 +3030,12 @@ Func DoTorch($x, $y)
 EndFunc   ;==>DoTorch
 #CS INFO
 	11559 V3 3/11/2019 6:15:52 PM V2 2/26/2019 8:07:26 AM V1 2/24/2019 6:05:52 PM
-#CE
+#CE INFO
 
 ;Static $s_MissileX
 ;Static $s_MissileY
 
-Func MoveMissile($i, $x, $y)
+Func MoveMissile($i, $x, $y) ; show only when active seeking
 	Local $cx, $cy, $Hit, $mx, $my, $tx, $ty
 
 	;Check tap To see If off.
@@ -2975,11 +3043,13 @@ Func MoveMissile($i, $x, $y)
 		; look to see if you are on a X or Y line
 		If $x = $g_iYouX Or $y = $g_iYouY Then ;found you
 			$g_aObj[$i][$s_ObjAct] = 1
+			$g_fMissileActive = True
 			$g_aObj[$i][$s_MissileX] = $x
 			$g_aObj[$i][$s_MissileY] = $y
 		EndIf
 	Else ; Active
 		If $g_fTap = False Then
+			$g_fMissileActive = False
 			Return
 		EndIf
 		$mx = $g_aObj[$i][$s_MissileX]
@@ -3032,7 +3102,7 @@ Func MoveMissile($i, $x, $y)
 	EndIf
 EndFunc   ;==>MoveMissile
 #CS INFO
-	92883 V2 2/24/2019 6:05:52 PM V1 2/24/2019 12:43:53 AM
+	100014 V3 5/6/2019 7:40:52 AM V2 2/24/2019 6:05:52 PM V1 2/24/2019 12:43:53 AM
 #CE
 
 Func DoTap($tx, $ty)
@@ -3046,7 +3116,7 @@ Func DoTap($tx, $ty)
 			ClearObject($x, $y)
 			$x = $g_aObj[$g_iTapObj][$s_ObjX]
 			$y = $g_aObj[$g_iTapObj][$s_ObjY]
-			ShowObject($x, $y, 31)
+			;ShowObject($x, $y, 31)
 			$g_aObj[$g_iTapObj][$s_ObjAct] = 0
 		EndIf
 		ShowObject($tx, $ty, 30)
@@ -3057,7 +3127,7 @@ Func DoTap($tx, $ty)
 	EndIf
 EndFunc   ;==>DoTap
 #CS INFO
-	33440 V3 3/13/2019 1:52:12 PM V2 2/24/2019 6:05:52 PM V1 2/24/2019 12:43:53 AM
+	33499 V4 5/6/2019 7:40:52 AM V3 3/13/2019 1:52:12 PM V2 2/24/2019 6:05:52 PM V1 2/24/2019 12:43:53 AM
 #CE
 
 ;Always active
@@ -3097,7 +3167,7 @@ Func MoveHorz($i, $x, $y, $flag)
 EndFunc   ;==>MoveHorz
 #CS INFO
 	45400 V2 2/24/2019 6:05:52 PM V1 2/24/2019 12:43:53 AM
-#CE
+#CE INFO
 
 Func CheckOtherOne($x, $y, $other)
 	Local $i, $xx, $yy
@@ -3117,7 +3187,7 @@ Func CheckOtherOne($x, $y, $other)
 EndFunc   ;==>CheckOtherOne
 #CS INFO
 	24244 V4 3/30/2019 6:02:52 PM V3 3/8/2019 8:44:22 AM V2 2/24/2019 6:05:52 PM V1 2/24/2019 12:43:53 AM
-#CE
+#CE INFO
 
 ;Always active
 ; $s_HVdir = -1 or 1  define pic
@@ -3157,7 +3227,7 @@ Func MovePlatform($i, $x, $y)
 EndFunc   ;==>MovePlatform
 #CS INFO
 	31967 V2 2/24/2019 6:05:52 PM V1 2/24/2019 12:43:53 AM
-#CE
+#CE INFO
 
 Func MoveVert($i, $x, $y, $flag)
 	Local $ty, $Hit
@@ -3185,7 +3255,7 @@ Func MoveVert($i, $x, $y, $flag)
 EndFunc   ;==>MoveVert
 #CS INFO
 	35542 V4 4/23/2019 12:08:13 PM V3 3/21/2019 4:38:57 PM V2 2/24/2019 6:05:52 PM V1 2/24/2019 12:43:53 AM
-#CE
+#CE INFO
 
 Func DoDoor($x, $y)
 	If $g_fHitKey Then
@@ -3194,7 +3264,7 @@ Func DoDoor($x, $y)
 EndFunc   ;==>DoDoor
 #CS INFO
 	6396 V2 3/11/2019 6:15:52 PM V1 2/24/2019 6:05:52 PM
-#CE
+#CE INFO
 
 Func OneOnlyRemove($a)
 	If $g_fEditMode Then
@@ -3228,7 +3298,7 @@ Func OneOnlyRemove($a)
 EndFunc   ;==>OneOnlyRemove
 #CS INFO
 	34374 V4 4/27/2019 12:08:08 PM V3 4/26/2019 9:16:45 PM V2 4/26/2019 6:23:56 PM V1 3/31/2019 4:59:34 PM
-#CE
+#CE INFO
 
 Func TurnButtonOn($a)
 	Local $z
@@ -3244,7 +3314,7 @@ Func TurnButtonOn($a)
 EndFunc   ;==>TurnButtonOn
 #CS INFO
 	17523 V2 4/23/2019 8:02:57 PM V1 3/31/2019 4:59:34 PM
-#CE
+#CE INFO
 
 Func TurnButtonOff($a)
 	If $g_WhichCur = 1 Then
@@ -3258,7 +3328,7 @@ Func TurnButtonOff($a)
 EndFunc   ;==>TurnButtonOff
 #CS INFO
 	13748 V2 4/23/2019 8:02:57 PM V1 3/31/2019 4:59:34 PM
-#CE
+#CE INFO
 
 Func CkobjOneOnly($a) ; Run after storing value into map
 	If $g_fEditMode Then
@@ -3325,7 +3395,7 @@ Func CkobjOneOnly($a) ; Run after storing value into map
 EndFunc   ;==>CkobjOneOnly
 #CS INFO
 	119377 V3 4/26/2019 9:16:45 PM V2 4/26/2019 6:23:56 PM V1 3/31/2019 4:59:34 PM
-#CE
+#CE INFO
 
 Func BonusBar()
 	Local Static $idProgressbar = 0
@@ -3343,7 +3413,7 @@ Func BonusBar()
 EndFunc   ;==>BonusBar
 #CS INFO
 	40314 V3 3/28/2019 9:21:27 PM V2 3/21/2019 4:38:57 PM V1 2/26/2019 9:53:21 PM
-#CE
+#CE INFO
 
 Func ShowObject($x, $y, $a)
 	Local $Color, $xx, $yy, $e
@@ -3417,7 +3487,12 @@ Func ShowObject($x, $y, $a)
 			Case 16 ;Ver Block
 				$Color = "Vert.jpg"
 			Case 31
-				$Color = "Missile.jpg"
+				If $g_fMissileActive Or $g_fDemoLevel Then
+					$Color = "Missile.jpg"
+				Else
+					$Color = "Black.jpg"
+				EndIf
+
 			Case 128
 				$Color = "blue.jpg"
 			Case 129
@@ -3498,7 +3573,7 @@ Func ShowObject($x, $y, $a)
 	EndIf
 EndFunc   ;==>ShowObject
 #CS INFO
-	184835 V13 4/26/2019 9:16:45 PM V12 4/26/2019 6:23:56 PM V11 3/31/2019 4:59:34 PM V10 3/30/2019 12:24:33 AM
+	190864 V14 5/6/2019 7:40:52 AM V13 4/26/2019 9:16:45 PM V12 4/26/2019 6:23:56 PM V11 3/31/2019 4:59:34 PM
 #CE
 
 ;$a >0 return text for $a  -1 use aMap location at   -2  display cur
@@ -3590,8 +3665,9 @@ Func EditObject($a)
 EndFunc   ;==>EditObject
 #CS INFO
 	97150 V8 4/26/2019 9:16:45 PM V7 4/26/2019 6:23:56 PM V6 3/31/2019 4:59:34 PM V5 3/30/2019 6:02:52 PM
-#CE
+#CE INFO
 
+$ver = StringLeft($ver, StringInStr($ver," ",0,4))
 Main()
 Exit
 
@@ -3600,6 +3676,6 @@ Func Trim($s)
 EndFunc   ;==>Trim
 #CS INFO
 	4672 V1 3/27/2019 9:45:39 PM
-#CE
+#CE INFO
 
-;~T ScriptFunc.exe V0.53 17 Apr 2019 - 4/29/2019 1:35:05 PM
+;~T ScriptFunc.exe V0.53 17 Apr 2019 - 5/6/2019 7:40:52 AM

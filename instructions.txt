@@ -1,4 +1,4 @@
-The Game  version 0.99
+The Game  version 1.03
 
 Pick up all diamonds and if Exit exists get to it.
 --------------------------------------------------------
@@ -122,14 +122,9 @@ To DELETE a level change title to DELETE,
 Game Loop
 You move (up left/right), objects move, you move down.  Tick time delay to 200ms, repeat. 
 -----------------------------------------------------------------------
-Need to be done.
-Startup:
 
-Setting:
-
-Game:
-
-
-Edit:
-
-Pictures update
+Changes
+1.03 Missile only show when active seeking
+1.02 Replay play only in Editor.  Problem just stops. Runs 99% ok.  Need events before stop.
+	Need new message start Box. - speed option - stop before death so you can continue to test.
+1.01 Force KEY and TORCH to be active in Edit Demo
