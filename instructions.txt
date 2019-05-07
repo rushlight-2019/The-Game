@@ -1,4 +1,6 @@
-The Game  version 1.03
+The Game  version 1.04
+
+Changes see bottom.
 
 Pick up all diamonds and if Exit exists get to it.
 --------------------------------------------------------
@@ -124,6 +126,7 @@ You move (up left/right), objects move, you move down.  Tick time delay to 200ms
 -----------------------------------------------------------------------
 
 Changes
+1.04 Editor Replay goes without delay tick.  Still gets lost 1% of the time.
 1.03 Missile only show when active seeking
 1.02 Replay play only in Editor.  Problem just stops. Runs 99% ok.  Need events before stop.
 	Need new message start Box. - speed option - stop before death so you can continue to test.

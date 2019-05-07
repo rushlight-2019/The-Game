@@ -6,7 +6,7 @@
 #EndRegion ;**** Directives created by AutoIt3Wrapper_GUI ****
 AutoItSetOption("MustDeclareVars", 1)
 
-Global $ver = "1.03a 6 May 19 Missile only show when active seeking"
+Global $ver = "1.04 6 May 19 Replay - runs at maximum speed"
 
 Global $TESTING = @Compiled = 0
 
@@ -16,8 +16,9 @@ Global $TESTING = @Compiled = 0
 	GNU GENERAL PUBLIC LICENSE
 	Version 3, 29 June 2007
 
+	1.04 6 May 19 Replay - runs at maximum speed
 	1.03 6 May 19 Missile only show when active seeking
-	1.02 3 May 19 Replay  - works most of the time.  problem it stops 1% of the time needq events!
+	1.02 3 May 19 Replay  - works most of the time.  problem it gets lost 1% of the time need events!
 	1.01 30 Apr 19	Edit Key and Lamp active on Edit Demo
 
 	1.00 29 Apr 19 - Done
@@ -2397,16 +2398,18 @@ Func Tick() ; ave time in 50ms  per loop  + 100ms
 		BonusBar()
 	EndIf
 
-	While 1
-		$fdiff = TimerDiff($g_hTick)
-		If $fdiff > 200 Then ;150
-			ExitLoop
-		EndIf
-	WEnd
+	If $g_fReplayDo = False Then
+		While 1
+			$fdiff = TimerDiff($g_hTick)
+			If $fdiff > 200 Then ;150
+				ExitLoop
+			EndIf
+		WEnd
+	EndIf
 	$g_hTick = TimerInit()
 EndFunc   ;==>Tick
 #CS INFO
-	24580 V5 5/6/2019 7:40:52 AM V4 3/21/2019 4:38:57 PM V3 2/26/2019 9:53:21 PM V2 2/26/2019 8:07:26 AM
+	27296 V6 5/7/2019 3:10:39 AM V5 5/6/2019 7:40:52 AM V4 3/21/2019 4:38:57 PM V3 2/26/2019 9:53:21 PM
 #CE
 
 Func ReplayRecDo()
@@ -3487,7 +3490,7 @@ Func ShowObject($x, $y, $a)
 			Case 16 ;Ver Block
 				$Color = "Vert.jpg"
 			Case 31
-				If $g_fMissileActive Or $g_fDemoLevel Or  $g_fEditMode Then
+				If $g_fMissileActive Or $g_fDemoLevel Or $g_fEditMode Then
 					$Color = "Missile.jpg"
 				Else
 					$Color = "Black.jpg"
@@ -3573,7 +3576,7 @@ Func ShowObject($x, $y, $a)
 	EndIf
 EndFunc   ;==>ShowObject
 #CS INFO
-	190864 V14 5/6/2019 7:40:52 AM V13 4/26/2019 9:16:45 PM V12 4/26/2019 6:23:56 PM V11 3/31/2019 4:59:34 PM
+	192172 V15 5/7/2019 3:10:39 AM V14 5/6/2019 7:40:52 AM V13 4/26/2019 9:16:45 PM V12 4/26/2019 6:23:56 PM
 #CE
 
 ;$a >0 return text for $a  -1 use aMap location at   -2  display cur
@@ -3667,7 +3670,7 @@ EndFunc   ;==>EditObject
 	97150 V8 4/26/2019 9:16:45 PM V7 4/26/2019 6:23:56 PM V6 3/31/2019 4:59:34 PM V5 3/30/2019 6:02:52 PM
 #CE INFO
 
-$ver = StringLeft($ver, StringInStr($ver," ",0,4))
+$ver = StringLeft($ver, StringInStr($ver, " ", 0, 4))
 Main()
 Exit
 
@@ -3678,4 +3681,4 @@ EndFunc   ;==>Trim
 	4672 V1 3/27/2019 9:45:39 PM
 #CE INFO
 
-;~T ScriptFunc.exe V0.53 17 Apr 2019 - 5/6/2019 7:40:52 AM
+;~T ScriptFunc.exe V0.53 17 Apr 2019 - 5/7/2019 3:10:39 AM
