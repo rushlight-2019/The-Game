@@ -10,7 +10,7 @@ Start Menu:
 2. Demo Level  <<-- Should run first.  Explains things.  
 3. Instructions  Notepad this text.  You have to close. 
 S. Setting
-E. Edit current level
+E. Edit a level or create a new one
 
 Q. Quit
 -----------------------------------------------------------
@@ -46,7 +46,6 @@ Vertical moving blocks. Triangle:  You can ride down but not up. Don't run into 
 Horizonal moving blocks. + - :  Deadly if you run to them or them into you.  You can run over the top.
 
 Hidden area. You need the torch to see. There moving hidden horizonal blocks.
-	Hidden Horizonal block direction set randomly.
 
 ~~ you can ride down. They DON'T go back up.
 
@@ -90,7 +89,7 @@ Quit: Exit editor
 	Colors:  Select color objects
 	Ojects:  Select non color objects. 
 		If objects can have only 1 on sceen, once added the button disappears.
-		If you want to move that object you most replace it with a different object. And the button will show.
+		If you want to move that object you must replace it with a different object. And the button will show.
 	Controls: see below.
 ----------------
 CONTROLS:
